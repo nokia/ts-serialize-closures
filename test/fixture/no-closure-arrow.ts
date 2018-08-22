@@ -1,0 +1,1 @@
+let noClosureArrow = () => 10;

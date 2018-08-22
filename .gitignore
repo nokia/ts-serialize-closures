@@ -1,0 +1,8 @@
+# Ignore output files.
+dist/
+
+# Ignore node modules.
+node_modules/
+
+# Ignore package-lock.json file.
+package-lock.json
