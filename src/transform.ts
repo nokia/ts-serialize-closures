@@ -102,14 +102,68 @@ function visitor(ctx: ts.TransformationContext, typeChecker: ts.TypeChecker) {
   function transformLambda(
     node: ts.ArrowFunction | ts.FunctionExpression): ts.VisitResult<ts.Node> {
 
+    // Visit the lambda and extract captured symbols.
+    let { visited, captured } = visitAndExtractCapturedSymbols(node);
+
+    return addClosurePropertyToLambda(ctx, visited, captured);
+  }
+
+  /**
+   * Transforms a function declaration to include a closure property.
+   * @param node The node to transform.
+   */
+  function transformFunctionDeclaration(
+    node: ts.FunctionDeclaration): ts.VisitResult<ts.Node> {
+
+    // Visit the function and extract captured symbols.
+    let { visited, captured } = visitAndExtractCapturedSymbols(node.body, node);
+
+    // Create an updated function declaration.
+    let funcDecl = ts.updateFunctionDeclaration(
+      node,
+      node.decorators,
+      node.modifiers,
+      node.asteriskToken,
+      node.name,
+      node.typeParameters,
+      node.parameters,
+      node.type,
+      visited);
+
+    if (captured.length === 0) {
+      return funcDecl;
+    }
+    else {
+      return [
+        funcDecl,
+        ts.createStatement(
+          createClosurePropertyAssignment(
+            node.name,
+            captured))
+      ];
+    }
+  }
+
+  /**
+   * Visits a node and extracts all used identifiers.
+   * @param node The node to visit.
+   * @param scopeNode A node that defines the scope from
+   * which eligible symbols are extracted.
+   */
+  function visitAndExtractCapturedSymbols<T extends ts.Node>(
+    node: T,
+    scopeNode?: ts.Node): { visited: T, captured: ts.Symbol[] } {
+
+    scopeNode = scopeNode || node;
+
     let symbolsInScope = typeChecker.getSymbolsInScope(
-      node.parent,
+      scopeNode.parent,
       ts.SymbolFlags.Variable | ts.SymbolFlags.Function);
 
     let usedVariables: string[] = [];
 
     // Visit the body of the arrow function.
-    let visitedArrow = ts.visitEachChild(node, arrowVisitor(usedVariables), ctx);
+    let visited = ts.visitEachChild(node, arrowVisitor(usedVariables), ctx);
 
     // Figure out which symbols are captured by intersecting
     // the set of symbols in scope with the set of names used
@@ -121,18 +175,18 @@ function visitor(ctx: ts.TransformationContext, typeChecker: ts.TypeChecker) {
     // We can do better by recording a set of locally declared names in
     // `arrowVisitor`.
 
-    let capturedVariables: ts.Symbol[] = [];
+    let captured: ts.Symbol[] = [];
     for (let symbol of symbolsInScope) {
       if (usedVariables.indexOf(symbol.name) >= 0) {
-        capturedVariables.push(symbol);
+        captured.push(symbol);
       }
     }
 
-    return addClosurePropertyToLambda(ctx, visitedArrow, capturedVariables);
+    return { visited, captured }
   }
 
   /**
-   * Creates an arrow function visitor that populates an array of used
+   * Creates an node visitor that populates an array of used
    * variables.
    * @param usedVariables An array of used variables to populate with
    * all identifiers in visited nodes.
@@ -155,6 +209,8 @@ function visitor(ctx: ts.TransformationContext, typeChecker: ts.TypeChecker) {
   function visitor(node: ts.Node): ts.VisitResult<ts.Node> {
     if (ts.isArrowFunction(node) || ts.isFunctionExpression(node)) {
       return transformLambda(node);
+    } else if (ts.isFunctionDeclaration(node)) {
+      return transformFunctionDeclaration(node);
     } else {
       return ts.visitEachChild(node, visitor, ctx);
     }
