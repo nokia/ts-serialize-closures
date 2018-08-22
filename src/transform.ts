@@ -4,6 +4,53 @@ import * as ts from 'typescript';
 // (https://github.com/DoctorEvidence/ts-transform-safely)
 
 /**
+ * Creates a lambda that can be evaluated to a key-value
+ * mapping for captured variables.
+ * @param capturedVariables The list of captured variables.
+ */
+function createClosureLambda(capturedVariables: ts.Symbol[]) {
+  // Synthesize a lambda that has the following format:
+  //
+  //     () => { a, b, ... }
+  //
+  // where a, b, ... is the list of captured variables.
+  //
+  // First step: create the object literal returned by the lamba.
+  let objLiteralElements: ts.ObjectLiteralElementLike[] = [];
+
+  for (let variable of capturedVariables) {
+    objLiteralElements.push(
+      ts.createShorthandPropertyAssignment(variable.name));
+  }
+
+  // Create the lambda itself.
+  return ts.createArrowFunction(
+    [],
+    [],
+    [],
+    undefined,
+    undefined,
+    ts.createObjectLiteral(objLiteralElements));
+}
+
+/**
+ * Creates an expression that produces a closure lambda
+ * and assigns it to the closure property.
+ * @param closureFunction The function whose closure property
+ * is to be set.
+ * @param capturedVariables The list of captured variables to
+ * include in the closure lambda.
+ */
+function createClosurePropertyAssignment(
+  closureFunction: ts.Expression,
+  capturedVariables: ts.Symbol[]): ts.BinaryExpression {
+
+  return ts.createAssignment(
+    ts.createPropertyAccess(closureFunction, "__closure"),
+    createClosureLambda(capturedVariables));
+}
+
+/**
  * Adds a closure property to a lambda. Returns
  * an expression that produces the exact same lambda
  * but with the closure property added.
@@ -28,38 +75,13 @@ function addClosurePropertyToLambda(
   let temp = ts.createTempVariable(undefined);
   ctx.hoistVariableDeclaration(temp);
 
-  // Synthesize a lambda that has the following format:
-  //
-  //     () => { a, b, ... }
-  //
-  // where a, b, ... is the list of captured variables.
-  //
-  // First step: create the object literal returned by the lamba.
-  let objLiteralElements: ts.ObjectLiteralElementLike[] = [];
-
-  for (let variable of capturedVariables) {
-    objLiteralElements.push(
-      ts.createShorthandPropertyAssignment(variable.name));
-  }
-
-  // Create the lambda itself.
-  let closureLambda = ts.createArrowFunction(
-    [],
-    [],
-    [],
-    undefined,
-    undefined,
-    ts.createObjectLiteral(objLiteralElements));
-
   // Use the comma operator to create an expression that looks
   // like this:
   //
   // (temp = <lambda>, temp.__closure = () => { a, b, ... }, temp)
   return ts.createCommaList([
     ts.createAssignment(temp, lambda),
-    ts.createAssignment(
-      ts.createPropertyAccess(temp, "__closure"),
-      closureLambda),
+    createClosurePropertyAssignment(temp, capturedVariables),
     temp
   ]);
 }
