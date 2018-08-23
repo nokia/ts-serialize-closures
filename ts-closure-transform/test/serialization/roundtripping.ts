@@ -22,9 +22,11 @@ export function roundTripNestedClosure() {
   let a = 10;
   let f = x => {
     return y => {
-      return a + x + y;
+      return { result: a + x + y, f };
     };
   };
 
-  expect(roundtrip(f(10))(5)).to.equal(25);
+  let out = roundtrip(f(10))(5);
+  expect(out.result).to.equal(25);
+  expect(out.f(10)(5).result).to.equal(25);
 }
