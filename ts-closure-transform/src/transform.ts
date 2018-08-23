@@ -285,10 +285,28 @@ function visitor(ctx: ts.TransformationContext) {
    * @param captured The captured variable chain to update.
    */
   function visitor(captured: CapturedVariableScope): ts.Visitor {
+    function recurse<T extends ts.Node>(node: T): T {
+      return ts.visitEachChild(node, visitor(captured), ctx);
+    }
+
     return node => {
       if (ts.isIdentifier(node)) {
         captured.use(node.text);
         return node;
+      } else if (ts.isPropertyAccessExpression(node)) {
+        // Make sure we don't accidentally fool ourselves
+        // into visiting property name identifiers.
+        return ts.updatePropertyAccess(
+          node,
+          recurse(node.expression),
+          node.name);
+      } else if (ts.isPropertyAssignment(node)) {
+        // Make sure we don't accidentally fool ourselves
+        // into visiting property name identifiers.
+        return ts.updatePropertyAssignment(
+          node,
+          node.name,
+          recurse(node.initializer));
       } else if (ts.isVariableDeclaration(node)) {
         visitDeclaration(node.name, captured);
         return ts.visitEachChild(node, visitor(captured), ctx);
