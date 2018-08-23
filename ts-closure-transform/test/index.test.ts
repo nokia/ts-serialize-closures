@@ -5,15 +5,25 @@ import * as fs from 'fs';
 import * as ts from 'typescript';
 
 // Note to test authors: the test runner is designed to
-// extract (*.ts, *.out.js) pairs from the 'fixture'
-// folder, compile each *.ts file to JavaScript (including
-// the ts-serialize-closures transformation) and then
-// test that the resulting JavaScript matches the code in
-// the corresponding *.out.js file.
+// extract and compile tests automatically. You don't need
+// to define tests manually here.
 //
-// To add a new test, simply create a new (*.ts, *.out.js)
-// pair in the 'fixture' folder. The test runner will
-// automatically include it.
+//   * Compilation (input, output checks) are extracted as
+//     (*.ts, *.out.js) pairs from the 'fixture' folder.
+//     Each *.ts file is compiled to JavaScript (including
+//     the ts-serialize-closures transformation) and then
+//     the test runner checks that the resulting JavaScript
+//     matches the code in the corresponding *.out.js file.
+//
+//     To add a new test, simply create a new (*.ts, *.out.js)
+//     pair in the 'fixture' folder. The test runner will
+//     automatically include it.
+//
+//   * Serialization tests are extracted from the 'serialization'
+//     folder. Each *.ts file there is first compiled (with the
+//     custom transformation on) and subsequently imported.
+//     The compiled serialization test file's exports are treated as
+//     unit tests.
 
 /**
  * Asserts that a particular source file compiles to
@@ -62,21 +72,40 @@ function readTextFile(fileName: string) {
  * and an output file.
  */
 function getTestFilePairs(): { sourceFileName: string, outputFileName: string }[] {
-  let pairs = [];
-  for (let path of fs.readdirSync(resolve(__dirname, 'fixture'))) {
-    if (path.length > 3 && path.substr(path.length - 3) == ".ts") {
-      let outputFileName = path.substring(0, path.length - ".ts".length) + ".out.js";
-      pairs.push({ sourceFileName: path, outputFileName });
-    }
-  }
-  return pairs;
+  return getFilesWithExtension('fixture', 'ts').map(path => {
+    let outputFileName = path.substring(0, path.length - ".ts".length) + ".out.js";
+    return { sourceFileName: path, outputFileName };
+  });
 }
 
-describe('ts-serialize-closures', () => {
+/**
+ * Gets a list of all files in a directory with a particular extension.
+ * @param dir The directory to look in.
+ * @param ext The extension to look for.
+ */
+function getFilesWithExtension(dir: string, ext: string): ReadonlyArray<string> {
+  return fs.readdirSync(resolve(__dirname, dir))
+    .filter(path =>
+      path.length > ext.length + 1 && path.substr(path.length - ext.length - 1) == "." + ext);
+}
+
+describe('Compilation', () => {
   // Compile all test files and make sure they match the expected output.
   for (let { sourceFileName, outputFileName } of getTestFilePairs()) {
     it(sourceFileName, () => {
       assertCompilesTo(sourceFileName, readTextFile(`fixture/${outputFileName}`));
     });
+  }
+});
+
+describe('Serialization', () => {
+  for (let fileName of getFilesWithExtension('serialization', 'ts')) {
+    compile(resolve(__dirname, `serialization/${fileName}`));
+
+    let jsFileName = resolve(__dirname, `serialization/${fileName.substr(0, fileName.length - 3)}.js`);
+    let compiledModule = require(jsFileName);
+    for (let exportedTestName in compiledModule) {
+      it(`${fileName}:${exportedTestName}`, compiledModule[exportedTestName]);
+    }
   }
 });

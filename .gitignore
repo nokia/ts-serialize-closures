@@ -1,6 +1,10 @@
 # Ignore output files.
 dist/
 
+# Ignore generated files.
+**/src/*.js
+ts-closure-transform/test/serialization/*.js
+
 # Ignore node modules.
 node_modules/
 
