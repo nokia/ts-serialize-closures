@@ -8,9 +8,14 @@ import * as ts from 'typescript';
  */
 class CapturedVariableScope {
   /**
-   * A list of all captured variables.
+   * A list of all used variable identifiers.
    */
-  private used: string[];
+  private used: ts.Identifier[];
+
+  /**
+   * A list of all used variable names.
+   */
+  private usedNames: string[];
 
   /**
    * A list of all declared variables in the current scope.
@@ -23,6 +28,7 @@ class CapturedVariableScope {
    */
   constructor(public parent?: CapturedVariableScope) {
     this.used = [];
+    this.usedNames = [];
     this.declared = [];
   }
 
@@ -31,8 +37,8 @@ class CapturedVariableScope {
    * captured by this scope.
    * @param name The name of the variable to check.
    */
-  isCaptured(name: string): boolean {
-    return this.used.indexOf(name) >= 0;
+  isCaptured(name: ts.Identifier): boolean {
+    return this.usedNames.indexOf(name.text) >= 0;
   }
 
   /**
@@ -40,8 +46,8 @@ class CapturedVariableScope {
    * declared by this scope.
    * @param name The name of the variable to check.
    */
-  isDeclared(name: string): boolean {
-    return this.declared.indexOf(name) >= 0;
+  isDeclared(name: ts.Identifier): boolean {
+    return this.declared.indexOf(name.text) >= 0;
   }
 
   /**
@@ -49,12 +55,13 @@ class CapturedVariableScope {
    * used by this scope.
    * @param name The name to capture.
    */
-  use(name: string): void {
+  use(name: ts.Identifier): void {
     if (this.isCaptured(name) || this.isDeclared(name)) {
       return;
     }
 
     this.used.push(name);
+    this.usedNames.push(name.text);
     if (this.parent) {
       this.parent.use(name);
     }
@@ -65,19 +72,19 @@ class CapturedVariableScope {
    * declared by this scope in the chain.
    * @param name The name to declare.
    */
-  declare(name: string): void {
+  declare(name: ts.Identifier): void {
     if (this.isDeclared(name)) {
       return;
     }
 
-    this.declared.push(name);
+    this.declared.push(name.text);
   }
 
   /**
    * Gets a read-only array containing all captured variables
    * in this scope.
    */
-  get captured(): ReadonlyArray<string> {
+  get captured(): ReadonlyArray<ts.Identifier> {
     return this.used;
   }
 }
@@ -87,7 +94,7 @@ class CapturedVariableScope {
  * mapping for captured variables.
  * @param capturedVariables The list of captured variables.
  */
-function createClosureLambda(capturedVariables: ReadonlyArray<string>) {
+function createClosureLambda(capturedVariables: ReadonlyArray<ts.Identifier>) {
   // Synthesize a lambda that has the following format:
   //
   //     () => { a, b, ... }
@@ -122,7 +129,7 @@ function createClosureLambda(capturedVariables: ReadonlyArray<string>) {
  */
 function createClosurePropertyAssignment(
   closureFunction: ts.Expression,
-  capturedVariables: ReadonlyArray<string>): ts.BinaryExpression {
+  capturedVariables: ReadonlyArray<ts.Identifier>): ts.BinaryExpression {
 
   return ts.createAssignment(
     ts.createPropertyAccess(closureFunction, "__closure"),
@@ -141,7 +148,7 @@ function createClosurePropertyAssignment(
 function addClosurePropertyToLambda(
   ctx: ts.TransformationContext,
   lambda: ts.Expression,
-  capturedVariables: ReadonlyArray<string>) {
+  capturedVariables: ReadonlyArray<ts.Identifier>) {
 
   // Tiny optimization: lambdas that don't
   // capture anything don't get a closure property.
@@ -185,8 +192,8 @@ function visitor(ctx: ts.TransformationContext) {
 
     // Declare the function expression's name.
     if (node.name) {
-      parentChain.declare(node.name.text);
-      chain.declare(node.name.text);
+      parentChain.declare(node.name);
+      chain.declare(node.name);
     }
 
     // Declare the function declaration's parameters.
@@ -215,8 +222,8 @@ function visitor(ctx: ts.TransformationContext) {
 
     // Declare the function declaration's name.
     if (node.name) {
-      parentChain.declare(node.name.text);
-      chain.declare(node.name.text);
+      parentChain.declare(node.name);
+      chain.declare(node.name);
     }
 
     // Declare the function declaration's parameters.
@@ -264,7 +271,7 @@ function visitor(ctx: ts.TransformationContext) {
   function visitAndExtractCapturedSymbols<T extends ts.Node>(
     node: T,
     chain: CapturedVariableScope,
-    scopeNode?: ts.Node): { visited: T, captured: ReadonlyArray<string> } {
+    scopeNode?: ts.Node): { visited: T, captured: ReadonlyArray<ts.Identifier> } {
 
     scopeNode = scopeNode || node;
 
@@ -281,7 +288,7 @@ function visitor(ctx: ts.TransformationContext) {
   function visitDeclaration(declaration: ts.Node, captured: CapturedVariableScope) {
     function visit(node: ts.Node): ts.VisitResult<ts.Node> {
       if (ts.isIdentifier(node)) {
-        captured.declare(node.text);
+        captured.declare(node);
         return node;
       } else {
         return ts.visitEachChild(node, visit, ctx);
@@ -302,7 +309,7 @@ function visitor(ctx: ts.TransformationContext) {
 
     return node => {
       if (ts.isIdentifier(node)) {
-        captured.use(node.text);
+        captured.use(node);
         return node;
       } else if (ts.isTypeNode(node)) {
         // Don't visit type nodes.
