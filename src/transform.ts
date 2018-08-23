@@ -4,6 +4,49 @@ import * as ts from 'typescript';
 // (https://github.com/DoctorEvidence/ts-transform-safely)
 
 /**
+ * A set of used, external variables in a chain of such sets.
+ */
+class CapturedVariableChain {
+  /**
+   * A list of all captured variables.
+   */
+  private used: string[];
+
+  /**
+   * Creates a captured variable set.
+   * @param parent The parent node in the captured variable chain.
+   */
+  constructor(public parent?: CapturedVariableChain) {
+    this.used = [];
+  }
+
+  /**
+   * Tells if a variable with a particular name is
+   * captured by this captured variable set.
+   * @param name The name of the variable to check.
+   */
+  isCaptured(name: string): boolean {
+    return this.used.indexOf(name) >= 0;
+  }
+
+  /**
+   * Hints that the variable with the given name is
+   * used by this node in the chain.
+   * @param name The name to capture.
+   */
+  use(name: string): void {
+    if (this.isCaptured(name)) {
+      return;
+    }
+
+    this.used.push(name);
+    if (this.parent) {
+      this.parent.use(name);
+    }
+  }
+}
+
+/**
  * Creates a lambda that can be evaluated to a key-value
  * mapping for captured variables.
  * @param capturedVariables The list of captured variables.
@@ -98,12 +141,16 @@ function visitor(ctx: ts.TransformationContext, typeChecker: ts.TypeChecker) {
    * Transforms an arrow function or function expression
    * to include a closure property.
    * @param node The node to transform.
+   * @param parentChain The captured variable chain of the parent function.
    */
   function transformLambda(
-    node: ts.ArrowFunction | ts.FunctionExpression): ts.VisitResult<ts.Node> {
+    node: ts.ArrowFunction | ts.FunctionExpression,
+    parentChain: CapturedVariableChain): ts.VisitResult<ts.Node> {
 
     // Visit the lambda and extract captured symbols.
-    let { visited, captured } = visitAndExtractCapturedSymbols(node);
+    let { visited, captured } = visitAndExtractCapturedSymbols(
+      node,
+      parentChain);
 
     return addClosurePropertyToLambda(ctx, visited, captured);
   }
@@ -111,12 +158,17 @@ function visitor(ctx: ts.TransformationContext, typeChecker: ts.TypeChecker) {
   /**
    * Transforms a function declaration to include a closure property.
    * @param node The node to transform.
+   * @param parentChain The captured variable chain of the parent function.
    */
   function transformFunctionDeclaration(
-    node: ts.FunctionDeclaration): ts.VisitResult<ts.Node> {
+    node: ts.FunctionDeclaration,
+    parentChain: CapturedVariableChain): ts.VisitResult<ts.Node> {
 
     // Visit the function and extract captured symbols.
-    let { visited, captured } = visitAndExtractCapturedSymbols(node.body, node);
+    let { visited, captured } = visitAndExtractCapturedSymbols(
+      node.body,
+      parentChain,
+      node);
 
     // Create an updated function declaration.
     let funcDecl = ts.updateFunctionDeclaration(
@@ -147,11 +199,13 @@ function visitor(ctx: ts.TransformationContext, typeChecker: ts.TypeChecker) {
   /**
    * Visits a node and extracts all used identifiers.
    * @param node The node to visit.
+   * @param parentChain The captured variable chain of the parent node.
    * @param scopeNode A node that defines the scope from
    * which eligible symbols are extracted.
    */
   function visitAndExtractCapturedSymbols<T extends ts.Node>(
     node: T,
+    parentChain: CapturedVariableChain,
     scopeNode?: ts.Node): { visited: T, captured: ts.Symbol[] } {
 
     scopeNode = scopeNode || node;
@@ -160,10 +214,13 @@ function visitor(ctx: ts.TransformationContext, typeChecker: ts.TypeChecker) {
       scopeNode.parent,
       ts.SymbolFlags.Variable | ts.SymbolFlags.Function);
 
-    let usedVariables: string[] = [];
+    let chain = new CapturedVariableChain(parentChain);
 
     // Visit the body of the arrow function.
-    let visited = ts.visitEachChild(node, arrowVisitor(usedVariables), ctx);
+    let visited = ts.visitEachChild(
+      node,
+      visitor(chain),
+      ctx);
 
     // Figure out which symbols are captured by intersecting
     // the set of symbols in scope with the set of names used
@@ -177,7 +234,7 @@ function visitor(ctx: ts.TransformationContext, typeChecker: ts.TypeChecker) {
 
     let captured: ts.Symbol[] = [];
     for (let symbol of symbolsInScope) {
-      if (usedVariables.indexOf(symbol.name) >= 0) {
+      if (chain.isCaptured(symbol.name)) {
         captured.push(symbol);
       }
     }
@@ -186,37 +243,25 @@ function visitor(ctx: ts.TransformationContext, typeChecker: ts.TypeChecker) {
   }
 
   /**
-   * Creates an node visitor that populates an array of used
-   * variables.
-   * @param usedVariables An array of used variables to populate with
-   * all identifiers in visited nodes.
+   * Creates a visitor.
+   * @param captured The captured variable chain to update.
    */
-  function arrowVisitor(usedVariables: string[]): ts.Visitor {
+  function visitor(captured: CapturedVariableChain): ts.Visitor {
     return node => {
       if (ts.isIdentifier(node)) {
-        usedVariables.push(node.text);
-        return ts.visitEachChild(node, arrowVisitor(usedVariables), ctx);
+        captured.use(node.text);
+        return node;
+      } else if (ts.isArrowFunction(node) || ts.isFunctionExpression(node)) {
+        return transformLambda(node, captured);
+      } else if (ts.isFunctionDeclaration(node)) {
+        return transformFunctionDeclaration(node, captured);
       } else {
-        return ts.visitEachChild(node, arrowVisitor(usedVariables), ctx);
+        return ts.visitEachChild(node, visitor(captured), ctx);
       }
     };
   }
 
-  /**
-   * Visits a node.
-   * @param node The node to visit.
-   */
-  function visitor(node: ts.Node): ts.VisitResult<ts.Node> {
-    if (ts.isArrowFunction(node) || ts.isFunctionExpression(node)) {
-      return transformLambda(node);
-    } else if (ts.isFunctionDeclaration(node)) {
-      return transformFunctionDeclaration(node);
-    } else {
-      return ts.visitEachChild(node, visitor, ctx);
-    }
-  }
-
-  return visitor;
+  return visitor(new CapturedVariableChain());
 }
 
 export default function (typeChecker: ts.TypeChecker) {
