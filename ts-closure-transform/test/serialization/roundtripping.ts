@@ -30,3 +30,13 @@ export function roundTripNestedClosure() {
   expect(out.result).to.equal(25);
   expect(out.f(10)(5).result).to.equal(25);
 }
+
+export function roundTripMathClosure() {
+  let a = 10;
+  let f = x => {
+    return Math.sqrt(x);
+  };
+
+  let out = roundtrip(f);
+  expect(out(4)).to.equal(2);
+}
