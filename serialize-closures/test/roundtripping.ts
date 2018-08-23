@@ -43,4 +43,8 @@ describe('Roundtripping', () => {
 
     expect(roundtrip(f)(42)).to.equal(52);
   });
+
+  it("can roundtrip builtins", () => {
+    expectRoundtrip(Math);
+  });
 });
