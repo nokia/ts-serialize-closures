@@ -29,7 +29,7 @@ export default function compile(
 
   let emitResult = program.emit(undefined, writeFile, undefined, undefined, {
     before: [
-      transform(program.getTypeChecker())
+      transform()
     ]
   });
 

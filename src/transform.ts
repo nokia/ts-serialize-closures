@@ -13,11 +13,17 @@ class CapturedVariableChain {
   private used: string[];
 
   /**
+   * A list of all declared variables in the current scope.
+   */
+  private declared: string[];
+
+  /**
    * Creates a captured variable set.
    * @param parent The parent node in the captured variable chain.
    */
   constructor(public parent?: CapturedVariableChain) {
     this.used = [];
+    this.declared = [];
   }
 
   /**
@@ -30,12 +36,21 @@ class CapturedVariableChain {
   }
 
   /**
+   * Tells if a variable with a particular name is
+   * declared by this scope.
+   * @param name The name of the variable to check.
+   */
+  isDeclared(name: string): boolean {
+    return this.declared.indexOf(name) >= 0;
+  }
+
+  /**
    * Hints that the variable with the given name is
-   * used by this node in the chain.
+   * used by this scope in the chain.
    * @param name The name to capture.
    */
   use(name: string): void {
-    if (this.isCaptured(name)) {
+    if (this.isCaptured(name) || this.isDeclared(name)) {
       return;
     }
 
@@ -44,6 +59,27 @@ class CapturedVariableChain {
       this.parent.use(name);
     }
   }
+
+  /**
+   * Hints that the variable with the given name is
+   * declared by this scope in the chain.
+   * @param name The name to declare.
+   */
+  declare(name: string): void {
+    if (this.isDeclared(name)) {
+      return;
+    }
+
+    this.declared.push(name);
+  }
+
+  /**
+   * Gets a read-only array containing all captured variables
+   * in this scope.
+   */
+  get captured(): ReadonlyArray<string> {
+    return this.used;
+  }
 }
 
 /**
@@ -51,7 +87,7 @@ class CapturedVariableChain {
  * mapping for captured variables.
  * @param capturedVariables The list of captured variables.
  */
-function createClosureLambda(capturedVariables: ts.Symbol[]) {
+function createClosureLambda(capturedVariables: ReadonlyArray<string>) {
   // Synthesize a lambda that has the following format:
   //
   //     () => { a, b, ... }
@@ -63,7 +99,7 @@ function createClosureLambda(capturedVariables: ts.Symbol[]) {
 
   for (let variable of capturedVariables) {
     objLiteralElements.push(
-      ts.createShorthandPropertyAssignment(variable.name));
+      ts.createShorthandPropertyAssignment(variable));
   }
 
   // Create the lambda itself.
@@ -86,7 +122,7 @@ function createClosureLambda(capturedVariables: ts.Symbol[]) {
  */
 function createClosurePropertyAssignment(
   closureFunction: ts.Expression,
-  capturedVariables: ts.Symbol[]): ts.BinaryExpression {
+  capturedVariables: ReadonlyArray<string>): ts.BinaryExpression {
 
   return ts.createAssignment(
     ts.createPropertyAccess(closureFunction, "__closure"),
@@ -105,7 +141,7 @@ function createClosurePropertyAssignment(
 function addClosurePropertyToLambda(
   ctx: ts.TransformationContext,
   lambda: ts.Expression,
-  capturedVariables: ts.Symbol[]) {
+  capturedVariables: ReadonlyArray<string>) {
 
   // Tiny optimization: lambdas that don't
   // capture anything don't get a closure property.
@@ -130,12 +166,10 @@ function addClosurePropertyToLambda(
 }
 
 /**
- * Creates a node visitor from a transformation context
- * and a type checker.
+ * Creates a node visitor from a transformation context.
  * @param ctx The transformation context to use.
- * @param typeChecker The program's type checker.
  */
-function visitor(ctx: ts.TransformationContext, typeChecker: ts.TypeChecker) {
+function visitor(ctx: ts.TransformationContext) {
 
   /**
    * Transforms an arrow function or function expression
@@ -147,10 +181,23 @@ function visitor(ctx: ts.TransformationContext, typeChecker: ts.TypeChecker) {
     node: ts.ArrowFunction | ts.FunctionExpression,
     parentChain: CapturedVariableChain): ts.VisitResult<ts.Node> {
 
+    let chain = new CapturedVariableChain(parentChain);
+
+    // Declare the function expression's name.
+    if (node.name) {
+      parentChain.declare(node.name.text);
+      chain.declare(node.name.text);
+    }
+
+    // Declare the function declaration's parameters.
+    for (let param of node.parameters) {
+      visitDeclaration(param.name, chain);
+    }
+
     // Visit the lambda and extract captured symbols.
     let { visited, captured } = visitAndExtractCapturedSymbols(
       node,
-      parentChain);
+      chain);
 
     return addClosurePropertyToLambda(ctx, visited, captured);
   }
@@ -164,30 +211,30 @@ function visitor(ctx: ts.TransformationContext, typeChecker: ts.TypeChecker) {
     node: ts.FunctionDeclaration,
     parentChain: CapturedVariableChain): ts.VisitResult<ts.Node> {
 
+    let chain = new CapturedVariableChain(parentChain);
+
+    // Declare the function declaration's name.
+    if (node.name) {
+      parentChain.declare(node.name.text);
+      chain.declare(node.name.text);
+    }
+
+    // Declare the function declaration's parameters.
+    for (let param of node.parameters) {
+      visitDeclaration(param.name, chain);
+    }
+
     // Visit the function and extract captured symbols.
     let { visited, captured } = visitAndExtractCapturedSymbols(
-      node.body,
-      parentChain,
+      node,
+      chain,
       node);
 
-    // Create an updated function declaration.
-    let funcDecl = ts.updateFunctionDeclaration(
-      node,
-      node.decorators,
-      node.modifiers,
-      node.asteriskToken,
-      node.name,
-      node.typeParameters,
-      node.parameters,
-      node.type,
-      visited);
-
     if (captured.length === 0) {
-      return funcDecl;
-    }
-    else {
+      return visited;
+    } else {
       return [
-        funcDecl,
+        visited,
         ts.createStatement(
           createClosurePropertyAssignment(
             node.name,
@@ -199,22 +246,16 @@ function visitor(ctx: ts.TransformationContext, typeChecker: ts.TypeChecker) {
   /**
    * Visits a node and extracts all used identifiers.
    * @param node The node to visit.
-   * @param parentChain The captured variable chain of the parent node.
+   * @param chain The captured variable chain of the node.
    * @param scopeNode A node that defines the scope from
    * which eligible symbols are extracted.
    */
   function visitAndExtractCapturedSymbols<T extends ts.Node>(
     node: T,
-    parentChain: CapturedVariableChain,
-    scopeNode?: ts.Node): { visited: T, captured: ts.Symbol[] } {
+    chain: CapturedVariableChain,
+    scopeNode?: ts.Node): { visited: T, captured: ReadonlyArray<string> } {
 
     scopeNode = scopeNode || node;
-
-    let symbolsInScope = typeChecker.getSymbolsInScope(
-      scopeNode.parent,
-      ts.SymbolFlags.Variable | ts.SymbolFlags.Function);
-
-    let chain = new CapturedVariableChain(parentChain);
 
     // Visit the body of the arrow function.
     let visited = ts.visitEachChild(
@@ -222,24 +263,21 @@ function visitor(ctx: ts.TransformationContext, typeChecker: ts.TypeChecker) {
       visitor(chain),
       ctx);
 
-    // Figure out which symbols are captured by intersecting
-    // the set of symbols in scope with the set of names used
-    // by the arrow function.
-    //
-    // TODO: compute the set of captured symbols exactly.
-    // This is currently a conservative approximation: names that are
-    // shadowed are assumed to be captured, but they're really not.
-    // We can do better by recording a set of locally declared names in
-    // `arrowVisitor`.
+    // Figure out which symbols are captured and return.
+    return { visited, captured: chain.captured }
+  }
 
-    let captured: ts.Symbol[] = [];
-    for (let symbol of symbolsInScope) {
-      if (chain.isCaptured(symbol.name)) {
-        captured.push(symbol);
+  function visitDeclaration(declaration: ts.Node, captured: CapturedVariableChain) {
+    function visit(node: ts.Node): ts.VisitResult<ts.Node> {
+      if (ts.isIdentifier(node)) {
+        captured.declare(node.text);
+        return node;
+      } else {
+        return ts.visitEachChild(node, visit, ctx);
       }
     }
 
-    return { visited, captured }
+    return visit(declaration);
   }
 
   /**
@@ -251,6 +289,9 @@ function visitor(ctx: ts.TransformationContext, typeChecker: ts.TypeChecker) {
       if (ts.isIdentifier(node)) {
         captured.use(node.text);
         return node;
+      } else if (ts.isVariableDeclaration(node)) {
+        visitDeclaration(node.name, captured);
+        return ts.visitEachChild(node, visitor(captured), ctx);
       } else if (ts.isArrowFunction(node) || ts.isFunctionExpression(node)) {
         return transformLambda(node, captured);
       } else if (ts.isFunctionDeclaration(node)) {
@@ -264,8 +305,8 @@ function visitor(ctx: ts.TransformationContext, typeChecker: ts.TypeChecker) {
   return visitor(new CapturedVariableChain());
 }
 
-export default function (typeChecker: ts.TypeChecker) {
+export default function() {
   return (ctx: ts.TransformationContext): ts.Transformer<ts.SourceFile> => {
-    return (sf: ts.SourceFile) => ts.visitNode(sf, visitor(ctx, typeChecker))
+    return (sf: ts.SourceFile) => ts.visitNode(sf, visitor(ctx))
   }
 }
