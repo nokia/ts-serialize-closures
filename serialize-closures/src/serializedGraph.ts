@@ -1,6 +1,13 @@
 import { isPrimitive, isArray, isFunction } from "util";
 
 /**
+ * A collection of builtins to give special treatment.
+ */
+const builtins: ReadonlyArray<{name: string, builtin: any }> = [
+  { name: 'Math', builtin: Math }
+];
+
+/**
  * Represents a graph of serialized values.
  */
 export class SerializedGraph {
@@ -107,6 +114,17 @@ export class SerializedGraph {
    * @param value The value to serialize.
    */
   private serialize(value: any): any {
+    // Check if the value is a builtin before proceeding.
+    for (let { name, builtin } of builtins) {
+      if (value === builtin) {
+        return {
+          'kind': 'builtin',
+          'name': name
+        };
+      }
+    }
+
+    // Usual serialization logic.
     if (isPrimitive(value)) {
       return {
         'kind': 'primitive',
@@ -191,6 +209,14 @@ export class SerializedGraph {
       (<any>stub).__impl = result;
       this.indexMap[resultIndex] = { element: result, index: valueIndex };
       return result;
+    } else if (value.kind === 'builtin') {
+      for (let { name, builtin } of builtins) {
+        if (name === value.name) {
+          this.indexMap.push({ element: builtin, index: valueIndex });
+          return builtin;
+        }
+      }
+      throw new Error(`Cannot deserialize unknown builtin '${value.name}'.`);
     } else {
       throw new Error(`Cannot deserialize unrecognized content kind '${value.kind}'.`);
     }
