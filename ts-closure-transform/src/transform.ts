@@ -226,15 +226,26 @@ function visitor(ctx: ts.TransformationContext) {
 
     // Visit the function and extract captured symbols.
     let { visited, captured } = visitAndExtractCapturedSymbols(
-      node,
+      node.body,
       chain,
       node);
 
+    let visitedFunc = ts.updateFunctionDeclaration(
+      node,
+      node.decorators,
+      node.modifiers,
+      node.asteriskToken,
+      node.name,
+      node.typeParameters,
+      node.parameters,
+      node.type,
+      visited);
+
     if (captured.length === 0) {
-      return visited;
+      return visitedFunc;
     } else {
       return [
-        visited,
+        visitedFunc,
         ts.createStatement(
           createClosurePropertyAssignment(
             node.name,
@@ -286,12 +297,15 @@ function visitor(ctx: ts.TransformationContext) {
    */
   function visitor(captured: CapturedVariableScope): ts.Visitor {
     function recurse<T extends ts.Node>(node: T): T {
-      return ts.visitEachChild(node, visitor(captured), ctx);
+      return <T>visitor(captured)(node);
     }
 
     return node => {
       if (ts.isIdentifier(node)) {
         captured.use(node.text);
+        return node;
+      } else if (ts.isTypeNode(node)) {
+        // Don't visit type nodes.
         return node;
       } else if (ts.isPropertyAccessExpression(node)) {
         // Make sure we don't accidentally fool ourselves
@@ -300,6 +314,13 @@ function visitor(ctx: ts.TransformationContext) {
           node,
           recurse(node.expression),
           node.name);
+      } else if (ts.isQualifiedName(node)) {
+        // Make sure we don't accidentally fool ourselves
+        // into visiting the right-hand side of a qualified name.
+        return ts.updateQualifiedName(
+          node,
+          recurse(node.left),
+          node.right);
       } else if (ts.isPropertyAssignment(node)) {
         // Make sure we don't accidentally fool ourselves
         // into visiting property name identifiers.
