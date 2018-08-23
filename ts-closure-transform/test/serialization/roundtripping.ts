@@ -17,3 +17,14 @@ export function roundTripClosure() {
 
   expect(roundtrip(factorial)(5)).to.equal(120);
 }
+
+export function roundTripNestedClosure() {
+  let a = 10;
+  let f = x => {
+    return y => {
+      return a + x + y;
+    };
+  };
+
+  expect(roundtrip(f(10))(5)).to.equal(25);
+}
