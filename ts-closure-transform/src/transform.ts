@@ -4,9 +4,9 @@ import * as ts from 'typescript';
 // (https://github.com/DoctorEvidence/ts-transform-safely)
 
 /**
- * A set of used, external variables in a chain of such sets.
+ * A lexical scope data structure that keeps track of captured variables.
  */
-class CapturedVariableChain {
+class CapturedVariableScope {
   /**
    * A list of all captured variables.
    */
@@ -18,17 +18,17 @@ class CapturedVariableChain {
   private declared: string[];
 
   /**
-   * Creates a captured variable set.
+   * Creates a captured variable scope.
    * @param parent The parent node in the captured variable chain.
    */
-  constructor(public parent?: CapturedVariableChain) {
+  constructor(public parent?: CapturedVariableScope) {
     this.used = [];
     this.declared = [];
   }
 
   /**
    * Tells if a variable with a particular name is
-   * captured by this captured variable set.
+   * captured by this scope.
    * @param name The name of the variable to check.
    */
   isCaptured(name: string): boolean {
@@ -46,7 +46,7 @@ class CapturedVariableChain {
 
   /**
    * Hints that the variable with the given name is
-   * used by this scope in the chain.
+   * used by this scope.
    * @param name The name to capture.
    */
   use(name: string): void {
@@ -179,9 +179,9 @@ function visitor(ctx: ts.TransformationContext) {
    */
   function transformLambda(
     node: ts.ArrowFunction | ts.FunctionExpression,
-    parentChain: CapturedVariableChain): ts.VisitResult<ts.Node> {
+    parentChain: CapturedVariableScope): ts.VisitResult<ts.Node> {
 
-    let chain = new CapturedVariableChain(parentChain);
+    let chain = new CapturedVariableScope(parentChain);
 
     // Declare the function expression's name.
     if (node.name) {
@@ -209,9 +209,9 @@ function visitor(ctx: ts.TransformationContext) {
    */
   function transformFunctionDeclaration(
     node: ts.FunctionDeclaration,
-    parentChain: CapturedVariableChain): ts.VisitResult<ts.Node> {
+    parentChain: CapturedVariableScope): ts.VisitResult<ts.Node> {
 
-    let chain = new CapturedVariableChain(parentChain);
+    let chain = new CapturedVariableScope(parentChain);
 
     // Declare the function declaration's name.
     if (node.name) {
@@ -252,7 +252,7 @@ function visitor(ctx: ts.TransformationContext) {
    */
   function visitAndExtractCapturedSymbols<T extends ts.Node>(
     node: T,
-    chain: CapturedVariableChain,
+    chain: CapturedVariableScope,
     scopeNode?: ts.Node): { visited: T, captured: ReadonlyArray<string> } {
 
     scopeNode = scopeNode || node;
@@ -267,7 +267,7 @@ function visitor(ctx: ts.TransformationContext) {
     return { visited, captured: chain.captured }
   }
 
-  function visitDeclaration(declaration: ts.Node, captured: CapturedVariableChain) {
+  function visitDeclaration(declaration: ts.Node, captured: CapturedVariableScope) {
     function visit(node: ts.Node): ts.VisitResult<ts.Node> {
       if (ts.isIdentifier(node)) {
         captured.declare(node.text);
@@ -284,7 +284,7 @@ function visitor(ctx: ts.TransformationContext) {
    * Creates a visitor.
    * @param captured The captured variable chain to update.
    */
-  function visitor(captured: CapturedVariableChain): ts.Visitor {
+  function visitor(captured: CapturedVariableScope): ts.Visitor {
     return node => {
       if (ts.isIdentifier(node)) {
         captured.use(node.text);
@@ -302,7 +302,7 @@ function visitor(ctx: ts.TransformationContext) {
     };
   }
 
-  return visitor(new CapturedVariableChain());
+  return visitor(new CapturedVariableScope());
 }
 
 export default function() {
