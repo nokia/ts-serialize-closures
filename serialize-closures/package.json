@@ -1,12 +1,11 @@
 {
-  "name": "ts-closure-transform",
+  "name": "serialize-closures",
   "version": "0.1.0",
-  "description": "Rewrites functions to include a '__closure' property, suitable for function serialization.",
+  "description": "Serializes closures processed by the ts-closure-transform package.",
   "main": "dist/index.js",
   "typings": "dist/index.d.ts",
   "scripts": {
     "test": "mocha --inspect=9228 --compilers ts:ts-node/register",
-    "test2": "rm -rf test/fixture/*.js && mocha --compilers ts:ts-node/register",
     "prepublish": "tsc"
   },
   "repository": {
@@ -34,7 +33,7 @@
     "glob": "^7.1.1",
     "mocha": "^3.3.0",
     "ts-node": "^3.0.2",
-    "typescript": "^2.7.0-rc"
+    "typescript": "^2.9.2"
   },
   "dependencies": {}
 }
