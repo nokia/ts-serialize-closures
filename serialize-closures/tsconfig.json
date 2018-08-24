@@ -7,10 +7,7 @@
         "moduleResolution": "node",
         "stripInternal": true,
         "jsx": "react",
-        "outDir": "dist",
-        "lib": [
-            "esnext"
-        ]
+        "outDir": "dist"
     },
     "include": [
         "src/**/*"
