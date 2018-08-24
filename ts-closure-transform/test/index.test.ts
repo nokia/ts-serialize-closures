@@ -1,4 +1,4 @@
-import compile from '../compile';
+import compile, { CJS_CONFIG } from '../compile';
 import { resolve } from 'path';
 import { expect } from 'chai';
 import * as fs from 'fs';
@@ -56,7 +56,10 @@ function assertCompilesTo(sourceFile: string, expectedOutput: string) {
     expect(trimmedData).to.equal(trimmedOutput);
   }
 
-  compile(resolve(__dirname, `fixture/${sourceFile}`), undefined, writeFileCallback);
+  compile(
+    resolve(__dirname, `fixture/${sourceFile}`),
+    { ...CJS_CONFIG, target: ts.ScriptTarget.Latest },
+    writeFileCallback);
 }
 
 /**
