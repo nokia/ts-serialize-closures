@@ -58,10 +58,12 @@ The serializer consists of two components.
 
 ## Limitations
 
-`ts-closure-transform` works fairly well for modest object graphs, but it does have a number of limitations you should be aware of:
+`ts-serialize-closures` works fairly well for modest object graphs, but it does have a number of limitations you should be aware of:
 
   * Variable-capturing functions defined in files that have not been transformed by `ts-closure-transform` cannot be deserialized correctly.
 
   * Serializing class definitions works, but only if they are first lowered to function definitions by the TypeScript compiler, i.e., the target is ES5 or lower.
 
   * Captured variables shared between serialized closures are no longer shared after serialization.
+
+  * Module imports and exports don't get serialized correctly for CommonJS modules. This is caused by the TypeScript compiler rewriting imported and exported name references *after* all "transformations" have run.
