@@ -3,7 +3,7 @@
 
 import * as ts from 'typescript';
 import { sync as globSync } from 'glob';
-import { transform } from './src';
+import { beforeTransform, afterTransform } from './src';
 
 export const CJS_CONFIG = {
   module: ts.ModuleKind.CommonJS,
@@ -28,8 +28,11 @@ export default function compile(
   const msgs = {};
 
   let emitResult = program.emit(undefined, writeFile, undefined, undefined, {
+    before: [
+      beforeTransform()
+    ],
     after: [
-      transform()
+      afterTransform()
     ]
   });
 
