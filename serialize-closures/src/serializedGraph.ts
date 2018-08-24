@@ -1,4 +1,4 @@
-import { isPrimitive, isArray, isFunction, isDate } from "util";
+import { isPrimitive, isArray, isFunction, isDate, isRegExp } from "util";
 import { getNameOfBuiltin, getBuiltinByName } from "./builtins";
 
 /**
@@ -135,6 +135,11 @@ export class SerializedGraph {
         'kind': 'date',
         'value': JSON.stringify(value)
       };
+    } else if (isRegExp(value)) {
+      return {
+        'kind': 'regex',
+        'value': value.toString()
+      };
     } else {
       return this.serializeObject(value);
     }
@@ -217,6 +222,12 @@ export class SerializedGraph {
       }
     } else if (value.kind === 'date') {
       let result = new Date(JSON.parse(value.value));
+      this.indexMap.push({ element: result, index: valueIndex });
+      return result;
+    } else if (value.kind === 'regex') {
+      // TODO: maybe figure out a better way to parse regexes
+      // than a call to `eval`?
+      let result = eval(value.value);
       this.indexMap.push({ element: result, index: valueIndex });
       return result;
     } else {
