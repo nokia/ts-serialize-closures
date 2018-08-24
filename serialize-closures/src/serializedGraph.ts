@@ -83,7 +83,8 @@ export class SerializedGraph {
     return {
       'kind': 'function',
       'source': value.toString(),
-      'closure': this.add(closure())
+      'closure': this.add(closure()),
+      'prototype': this.add(value.prototype)
     };
   }
 
@@ -92,13 +93,36 @@ export class SerializedGraph {
    * @param value The object to serialize.
    */
   private serializeObject(value: any): any {
-    let result = {};
-    for (let key in value) {
-      result[key] = this.add(value[key]);
+    let refs = {};
+    let descriptions = {};
+    for (let key of Object.getOwnPropertyNames(value)) {
+      let desc = Object.getOwnPropertyDescriptor(value, key);
+      if ('value' in desc && desc.configurable && desc.writable && desc.enumerable) {
+        // Typical property. Just encode its value and be done with it.
+        refs[key] = this.add(value[key]);
+      } else {
+        // Fancy property. We'll emit a description for it.
+        let serializedDesc: any = {};
+        if (desc.get) {
+          serializedDesc.get = this.add(desc.get);
+        }
+        if (desc.set) {
+          serializedDesc.set = this.add(desc.set);
+        }
+        if ('value' in desc) {
+          serializedDesc.value = this.add(desc.value);
+        }
+        serializedDesc.configurable = desc.configurable;
+        serializedDesc.writable = desc.writable;
+        serializedDesc.enumerable = desc.enumerable;
+        descriptions[key] = serializedDesc;
+      }
     }
     return {
       'kind': 'object',
-      'refs': result
+      'prototype': this.add(Object.getPrototypeOf(value)),
+      'refs': refs,
+      'descriptions': descriptions
     };
   }
 
@@ -176,10 +200,25 @@ export class SerializedGraph {
     } else if (value.kind === 'object') {
       // Push the (unfinished) object into the index map here because
       // there may be cycles in the graph of serialized objects.
-      let results = {};
+      let results = Object.create(this.get(value.prototype));
       this.indexMap.push({ element: results, index: valueIndex });
       for (let key in value.refs) {
         results[key] = this.get(value.refs[key]);
+      }
+      for (let key in value.descriptions) {
+        // Object property descriptions require some extra love.
+        let desc = value.descriptions[key];
+        let parsedDesc = { ...desc, };
+        if (desc.get) {
+          parsedDesc.get = this.get(desc.get);
+        }
+        if (desc.set) {
+          parsedDesc.set = this.get(desc.set);
+        }
+        if (desc.value) {
+          parsedDesc.value = this.get(desc.value);
+        }
+        Object.defineProperty(results, key, parsedDesc);
       }
       return results;
     } else if (value.kind === 'function') {
@@ -207,6 +246,7 @@ export class SerializedGraph {
 
       // Evaluate the code.
       let result = eval(code).apply(undefined, capturedVarVals);
+      result.prototype = this.get(value.prototype);
 
       // Patch the stub and index map.
       (<any>stub).__impl = result;
