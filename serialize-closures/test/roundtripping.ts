@@ -34,6 +34,10 @@ describe('Roundtripping', () => {
     expectRoundtrip(new Date("Thu, 28 Apr 2016 22:02:17 GMT"));
   });
 
+  it("can round-trip regexes", () => {
+    expectRoundtrip(/([^\s]+)/g);
+  });
+
   it("can round-trip functions without closures", () => {
     expect(
       roundtrip(function (x) { return x; })(10))
