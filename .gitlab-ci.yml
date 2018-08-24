@@ -1,0 +1,13 @@
+image: node:10.9.0
+
+all_tests:
+  script:
+    # Install packages.
+    - pushd serialize-closures; npm install; popd
+    - pushd ts-closure-transform; npm install; popd
+    # Build projects.
+    - pushd serialize-closures; tsc; popd
+    - pushd ts-closure-transform; tsc; popd
+    # Run the tests.
+    - pushd serialize-closures; npm test; popd
+    - pushd ts-closure-transform; npm test; popd
