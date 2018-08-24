@@ -113,7 +113,9 @@ export class SerializedGraph {
           serializedDesc.value = this.add(desc.value);
         }
         serializedDesc.configurable = desc.configurable;
-        serializedDesc.writable = desc.writable;
+        if (serializedDesc.writable !== undefined) {
+          serializedDesc.writable = desc.writable;
+        }
         serializedDesc.enumerable = desc.enumerable;
         descriptions[key] = serializedDesc;
       }
