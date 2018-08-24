@@ -5,14 +5,14 @@ import * as ts from 'typescript';
 import { sync as globSync } from 'glob';
 import { transform } from './src';
 
-const CJS_CONFIG = {
+export const CJS_CONFIG = {
   module: ts.ModuleKind.CommonJS,
   moduleResolution: ts.ModuleResolutionKind.NodeJs,
   noEmitOnError: false,
   noUnusedLocals: true,
   noUnusedParameters: true,
   stripInternal: true,
-  target: ts.ScriptTarget.Latest
+  target: ts.ScriptTarget.ES5
 };
 
 export default function compile(
@@ -28,7 +28,7 @@ export default function compile(
   const msgs = {};
 
   let emitResult = program.emit(undefined, writeFile, undefined, undefined, {
-    before: [
+    after: [
       transform()
     ]
   });
