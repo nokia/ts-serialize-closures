@@ -30,6 +30,12 @@ describe('Roundtripping', () => {
     expectRoundtrip({ 'hi': 'there' });
   });
 
+  it("can round-trip class-like objects", () => {
+    let obj = {};
+    Object.defineProperty(obj, 'hi', { get: () => 'there' });
+    expect(roundtrip(obj).hi).to.equal('there');
+  });
+
   it("can round-trip dates", () => {
     expectRoundtrip(new Date("Thu, 28 Apr 2016 22:02:17 GMT"));
   });
@@ -54,5 +60,16 @@ describe('Roundtripping', () => {
 
   it("can roundtrip builtins", () => {
     expectRoundtrip(Math);
+  });
+
+  it("can round-trip constructors", () => {
+    function Vector2(x, y) {
+      this.x = x;
+      this.y = y;
+    }
+    Vector2.prototype.lengthSquared = function() { return this.x * this.x + this.y * this.y; };
+    let builder: any = () => new Vector2(3, 4);
+    builder.__closure = () => ({ Vector2 });
+    expect(roundtrip(builder)().lengthSquared()).to.equal(25);
   });
 });
