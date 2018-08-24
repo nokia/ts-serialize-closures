@@ -7,16 +7,86 @@ type BuiltinList = ReadonlyArray<BuiltinRecord>;
  * A collection of builtins to give special treatment.
  */
 export const builtins: BuiltinList = expandBuiltins([
+  // This list is based on the list of JavaScript global
+  // objects at
+  //
+  // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects
+
+  // # Fundamental objects.
   { name: 'Object', builtin: Object },
-  { name: 'Math', builtin: Math },
-  { name: 'console', builtin: console },
-  { name: 'String', builtin: String },
-  { name: 'Date', builtin: Date },
-  { name: 'Array', builtin: Array },
-  { name: 'JSON', builtin: JSON },
-  { name: 'Number', builtin: Number },
-  { name: 'Boolean', builtin: Boolean },
   { name: 'Function', builtin: Function },
+  { name: 'Boolean', builtin: Boolean },
+  { name: 'Symbol', builtin: Symbol },
+  { name: 'Error', builtin: Error },
+  { name: 'EvalError', builtin: EvalError },
+  // Apparently V8 doesn't implement InternalError.
+  // { name: 'InternalError', builtin: InternalError },
+  { name: 'RangeError', builtin: RangeError },
+  { name: 'ReferenceError', builtin: ReferenceError },
+  { name: 'SyntaxError', builtin: SyntaxError },
+  { name: 'TypeError', builtin: TypeError },
+  { name: 'URIError', builtin: URIError },
+
+  // # Numbers and dates
+  { name: 'Number', builtin: Number },
+  { name: 'Math', builtin: Math },
+  { name: 'Date', builtin: Date },
+
+  // # Text processing
+  { name: 'String', builtin: String },
+  { name: 'RegExp', builtin: RegExp },
+
+  // # Indexed collections
+  { name: 'Array', builtin: Array },
+  { name: 'Int8Array', builtin: Int8Array },
+  { name: 'Uint8Array', builtin: Uint8Array },
+  { name: 'Uint8ClampedArray', builtin: Uint8ClampedArray },
+  { name: 'Int16Array', builtin: Int16Array },
+  { name: 'Uint16Array', builtin: Uint16Array },
+  { name: 'Int32Array', builtin: Int32Array },
+  { name: 'Uint32Array', builtin: Uint32Array },
+  { name: 'Float32Array', builtin: Float32Array },
+  { name: 'Float64Array', builtin: Float64Array },
+
+  // # Keyed collections
+  { name: 'Map', builtin: Map },
+  { name: 'Set', builtin: Set },
+  { name: 'WeakMap', builtin: WeakMap },
+  { name: 'WeakSet', builtin: WeakSet },
+
+  // # Structured data
+  { name: 'ArrayBuffer', builtin: ArrayBuffer },
+  { name: 'SharedArrayBuffer', builtin: SharedArrayBuffer },
+  { name: 'Atomics', builtin: Atomics },
+  { name: 'DataView', builtin: DataView },
+  { name: 'JSON', builtin: JSON },
+
+  // # Control abstraction objects
+  { name: 'Promise', builtin: Promise },
+  // The MDN page lists Generator, GeneratorFunction and AsyncFunction
+  // as global objects but V8 seems to disagree.
+  // { name: 'Generator', builtin: Generator },
+  // { name: 'GeneratorFunction', builtin: GeneratorFunction },
+  // { name: 'AsyncFunction', builtin: AsyncFunction },
+
+  // # Reflection
+  { name: 'Reflect', builtin: Reflect },
+  { name: 'Proxy', builtin: Proxy },
+
+  // # Internationalization
+  { name: 'Intl', builtin: Intl },
+  { name: 'Intl.Collator', builtin: Intl.Collator },
+  { name: 'Intl.DateTimeFormat', builtin: Intl.DateTimeFormat },
+  { name: 'Intl.NumberFormat', builtin: Intl.NumberFormat },
+
+  // TODO: include WebAssembly? That'd surely be nice, but TypeScript
+  // doesn't seem to have type definitions for it by default.
+
+  // # Value properties
+  { name: 'Infinity', builtin: Infinity },
+  { name: 'NaN', builtin: NaN },
+
+  // # Function properties
   { name: 'eval', builtin: eval },
   { name: 'parseInt', builtin: parseInt },
   { name: 'parseFloat', builtin: parseFloat },
@@ -28,8 +98,9 @@ export const builtins: BuiltinList = expandBuiltins([
   { name: 'encodeURIComponent', builtin: encodeURIComponent },
   { name: 'escape', builtin: escape },
   { name: 'unescape', builtin: unescape },
-  { name: 'Symbol', builtin: Symbol },
-  { name: 'RegExp', builtin: RegExp }
+
+  // # Extra addition: console
+  { name: 'console', builtin: console }
 ]);
 
 /**
