@@ -1,15 +1,5 @@
 import { isPrimitive, isArray, isFunction } from "util";
-
-/**
- * A collection of builtins to give special treatment.
- */
-const builtins: ReadonlyArray<{name: string, builtin: any }> = [
-  { name: 'Math', builtin: Math },
-  { name: 'console', builtin: console },
-  { name: 'String', builtin: String },
-  { name: 'Date', builtin: Date },
-  { name: 'Array', builtin: Array }
-];
+import { getNameOfBuiltin, getBuiltinByName } from "./builtins";
 
 /**
  * Represents a graph of serialized values.
@@ -119,13 +109,12 @@ export class SerializedGraph {
    */
   private serialize(value: any): any {
     // Check if the value is a builtin before proceeding.
-    for (let { name, builtin } of builtins) {
-      if (value === builtin) {
-        return {
-          'kind': 'builtin',
-          'name': name
-        };
-      }
+    let builtinName = getNameOfBuiltin(value);
+    if (builtinName !== undefined) {
+      return {
+        'kind': 'builtin',
+        'name': builtinName
+      };
     }
 
     // Usual serialization logic.
@@ -214,13 +203,13 @@ export class SerializedGraph {
       this.indexMap[resultIndex] = { element: result, index: valueIndex };
       return result;
     } else if (value.kind === 'builtin') {
-      for (let { name, builtin } of builtins) {
-        if (name === value.name) {
-          this.indexMap.push({ element: builtin, index: valueIndex });
-          return builtin;
-        }
+      let builtin = getBuiltinByName(value.name);
+      if (builtin === undefined) {
+        throw new Error(`Cannot deserialize unknown builtin '${value.name}'.`);
+      } else {
+        this.indexMap.push({ element: builtin, index: valueIndex });
+        return builtin;
       }
-      throw new Error(`Cannot deserialize unknown builtin '${value.name}'.`);
     } else {
       throw new Error(`Cannot deserialize unrecognized content kind '${value.kind}'.`);
     }
