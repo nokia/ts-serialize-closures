@@ -1,4 +1,4 @@
-import { isPrimitive, isArray, isFunction } from "util";
+import { isPrimitive, isArray, isFunction, isDate } from "util";
 import { getNameOfBuiltin, getBuiltinByName } from "./builtins";
 
 /**
@@ -130,6 +130,11 @@ export class SerializedGraph {
       };
     } else if (isFunction(value)) {
       return this.serializeFunction(value);
+    } else if (isDate(value)) {
+      return {
+        'kind': 'date',
+        'value': JSON.stringify(value)
+      };
     } else {
       return this.serializeObject(value);
     }
@@ -210,6 +215,10 @@ export class SerializedGraph {
         this.indexMap.push({ element: builtin, index: valueIndex });
         return builtin;
       }
+    } else if (value.kind === 'date') {
+      let result = new Date(JSON.parse(value.value));
+      this.indexMap.push({ element: result, index: valueIndex });
+      return result;
     } else {
       throw new Error(`Cannot deserialize unrecognized content kind '${value.kind}'.`);
     }
