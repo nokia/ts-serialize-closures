@@ -28,12 +28,13 @@ The serializer consists of two components.
       How you inject this transform depends on the webpack loader you're using. For `ts-loader` and `awesome-typescript-loader`, you can do the following:
 
       ```typescript
-      import { transform } from 'ts-closure-transform';
+      import { beforeTransform, afterTransform } from 'ts-closure-transform';
       // ...
       loader: 'ts-loader', // or 'awesome-typescript-loader'
       options: {
         getCustomTransformers: () => ({
-          after: [transform()]
+          before: [beforeTransform()],
+          after: [beforeTransform()]
         })
       }
       // ...
@@ -65,5 +66,3 @@ The serializer consists of two components.
   * Serializing class definitions works, but only if they are first lowered to function definitions by the TypeScript compiler, i.e., the target is ES5 or lower.
 
   * Captured variables shared between serialized closures are no longer shared after serialization.
-
-  * Module imports and exports don't get serialized correctly for CommonJS modules. This is caused by the TypeScript compiler rewriting imported and exported name references *after* all "transformations" have run.
