@@ -7,13 +7,13 @@ type BuiltinList = ReadonlyArray<BuiltinRecord>;
  * A collection of builtins to give special treatment.
  */
 export const builtins: BuiltinList = expandBuiltins([
+  { name: 'Object', builtin: Object },
   { name: 'Math', builtin: Math },
   { name: 'console', builtin: console },
   { name: 'String', builtin: String },
   { name: 'Date', builtin: Date },
   { name: 'Array', builtin: Array },
   { name: 'JSON', builtin: JSON },
-  { name: 'Object', builtin: Object },
   { name: 'Number', builtin: Number },
   { name: 'Boolean', builtin: Boolean },
   { name: 'Function', builtin: Function },
@@ -53,7 +53,7 @@ function expandBuiltins(roots: BuiltinList): BuiltinList {
   }
 
   while (worklist.length > 0) {
-    let record = worklist.pop();
+    let record = worklist.shift();
     if (getNameOfBuiltinImpl(record.builtin, results) === undefined) {
       // Builtin does not exist already. Add it to the results.
       results.push(record);
