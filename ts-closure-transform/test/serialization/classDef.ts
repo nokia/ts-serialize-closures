@@ -25,5 +25,5 @@ export function classObject() {
 }
 
 export function constructorCall() {
-  expect(roundtrip(new Vector2(3, 4)).length).to.equal(5);
+  expect(roundtrip(() => new Vector2(3, 4))().length).to.equal(5);
 }
