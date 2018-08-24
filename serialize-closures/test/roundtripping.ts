@@ -30,6 +30,10 @@ describe('Roundtripping', () => {
     expectRoundtrip({ 'hi': 'there' });
   });
 
+  it("can round-trip dates", () => {
+    expectRoundtrip(new Date("Thu, 28 Apr 2016 22:02:17 GMT"));
+  });
+
   it("can round-trip functions without closures", () => {
     expect(
       roundtrip(function (x) { return x; })(10))
