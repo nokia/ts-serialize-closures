@@ -39,3 +39,13 @@ export function roundTripMathClosure() {
   let out = roundtrip(f);
   expect(out(4)).to.equal(2);
 }
+
+export function roundTripMathFunctionClosure() {
+  let sqrt = Math.sqrt;
+  let f = x => {
+    return sqrt(x);
+  };
+
+  let out = roundtrip(f);
+  expect(out(4)).to.equal(2);
+}
