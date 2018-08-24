@@ -32,7 +32,6 @@ export function roundTripNestedClosure() {
 }
 
 export function roundTripMathClosure() {
-  let a = 10;
   let f = x => {
     return Math.sqrt(x);
   };
