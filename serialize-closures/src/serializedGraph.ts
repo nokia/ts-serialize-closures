@@ -4,7 +4,11 @@ import { isPrimitive, isArray, isFunction } from "util";
  * A collection of builtins to give special treatment.
  */
 const builtins: ReadonlyArray<{name: string, builtin: any }> = [
-  { name: 'Math', builtin: Math }
+  { name: 'Math', builtin: Math },
+  { name: 'console', builtin: console },
+  { name: 'String', builtin: String },
+  { name: 'Date', builtin: Date },
+  { name: 'Array', builtin: Array }
 ];
 
 /**
