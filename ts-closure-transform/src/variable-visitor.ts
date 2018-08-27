@@ -8,16 +8,23 @@ export type VariableId = number;
 /**
  * A scope data structure that assigns a unique id to each variable.
  */
-class VariableNumberingScope {
+export class VariableNumberingScope {
   private readonly localVariables: { [name: string]: VariableId };
   private readonly parent: VariableNumberingScope | undefined;
   private readonly counter: { value: number };
 
   /**
+   * Tells if this scope is a function scope.
+   */
+  readonly isFunctionScope: boolean;
+
+  /**
    * Creates a variable numbering scope.
+   * @param isFunctionScope Tells if the scope is a function scope.
    * @param parent A parent scope.
    */
-  constructor(parent?: VariableNumberingScope) {
+  constructor(isFunctionScope: boolean, parent?: VariableNumberingScope) {
+    this.isFunctionScope = isFunctionScope;
     this.localVariables = {};
     this.parent = parent;
     if (parent) {
@@ -32,7 +39,7 @@ class VariableNumberingScope {
    * the current scope.
    * @param name The name of the variable to define.
    */
-  public define(name: string): VariableId {
+  define(name: string): VariableId {
     let newId = this.counter.value++;
     this.localVariables[name] = newId;
     return newId;
@@ -43,7 +50,7 @@ class VariableNumberingScope {
    * particular name in the current scope.
    * @param name The name of the variable.
    */
-  public getId(name: string): VariableId {
+  getId(name: string): VariableId {
     if (name in this.localVariables) {
       // If the name is defined in the local variables,
       // then just grab its id.
@@ -57,17 +64,30 @@ class VariableNumberingScope {
       return this.define(name);
     }
   }
+
+  /**
+   * Gets the function scope of this scope,
+   * which is this scope if it is a function or top-level scope and
+   * the enclosing scope's function scope otherwise.
+   */
+  get functionScope(): VariableNumberingScope {
+    if (this.isFunctionScope || !this.parent) {
+      return this;
+    } else {
+      return this.parent.functionScope;
+    }
+  }
 }
 
 /**
- * A base class for visitors that visit variable uses and
- * definitions.
+ * A base class for visitors that visit variable uses,
+ * definitions and assignments.
  */
 export abstract class VariableVisitor {
   /**
    * The scope the variable visitor is currently in.
    */
-  private scope: VariableNumberingScope;
+  protected scope: VariableNumberingScope;
 
   /**
    * The transformation context.
@@ -80,7 +100,7 @@ export abstract class VariableVisitor {
    */
   constructor(ctx: ts.TransformationContext) {
     this.ctx = ctx;
-    this.scope = new VariableNumberingScope();
+    this.scope = new VariableNumberingScope(true);
   }
 
   /**
@@ -167,10 +187,78 @@ export abstract class VariableVisitor {
     // Statements
     else if (ts.isVariableStatement(node)) {
       return this.visitVariableStatement(node);
+    }
+    // Things that introduce scopes.
+    else if (ts.isArrowFunction(node)) {
+
+      let oldScope = this.scope;
+      this.scope = new VariableNumberingScope(true, oldScope);
+
+      for (let param of node.parameters) {
+        this.defineVariables(param.name);
+      }
+
+      let body = this.visitChildren(node.body);
+      this.scope = oldScope;
+      return ts.updateArrowFunction(
+        node,
+        node.modifiers,
+        node.typeParameters,
+        node.parameters,
+        node.type,
+        node.equalsGreaterThanToken,
+        body);
+
+    } else if (ts.isFunctionExpression(node)) {
+
+      let oldScope = this.scope;
+      this.scope = new VariableNumberingScope(true, oldScope);
+
+      this.defineVariables(node.name);
+
+      for (let param of node.parameters) {
+        this.defineVariables(param.name);
+      }
+
+      let body = this.visitChildren(node.body);
+      this.scope = oldScope;
+      return ts.updateFunctionExpression(
+        node,
+        node.modifiers,
+        node.asteriskToken,
+        node.name,
+        node.typeParameters,
+        node.parameters,
+        node.type,
+        body);
+
+    } else if (ts.isFunctionDeclaration(node)) {
+
+      let oldScope = this.scope;
+      this.scope = new VariableNumberingScope(true, oldScope);
+
+      this.defineVariables(node.name);
+
+      for (let param of node.parameters) {
+        this.defineVariables(param.name);
+      }
+
+      let body = this.visitChildren(node.body);
+      this.scope = oldScope;
+      return ts.updateFunctionDeclaration(
+        node,
+        node.decorators,
+        node.modifiers,
+        node.asteriskToken,
+        node.name,
+        node.typeParameters,
+        node.parameters,
+        node.type,
+        body);
 
     } else {
       let oldScope = this.scope;
-      this.scope = new VariableNumberingScope(oldScope);
+      this.scope = new VariableNumberingScope(false, oldScope);
       let result = this.visitChildren(node);
       this.scope = oldScope;
       return result;
@@ -313,7 +401,9 @@ export abstract class VariableVisitor {
    * @param name A binding name.
    */
   private defineVariables(name: ts.BindingName) {
-    if (ts.isIdentifier(name)) {
+    if (name === undefined) {
+
+    } else if (ts.isIdentifier(name)) {
       this.scope.define(name.text);
     } else if (ts.isArrayBindingPattern(name)) {
       for (let elem of name.elements) {
