@@ -2,6 +2,8 @@ image: node:10.9.0
 
 all_tests:
   script:
+    # Install tsc.
+    - sudo npm install -g typescript
     # Install packages.
     - pushd serialize-closures; npm install; popd
     - pushd ts-closure-transform; npm install; popd
