@@ -8,6 +8,7 @@ function roundtrip<T>(value: T): T {
 }
 
 export function callImportTest() {
-  expect(roundtrip(new Person("Clark Kent", "clark.kent@gmail.com")).toString())
-    .to.equal("Clark Kent <clark.kent@gmail.com>");
+  let originalCreate = () => Person.create("Clark Kent", "clark.kent@gmail.com");
+  let create = roundtrip(originalCreate);
+  expect(create().toString()).to.equal(originalCreate().toString());
 }
