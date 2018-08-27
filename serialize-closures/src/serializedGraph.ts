@@ -80,12 +80,16 @@ export class SerializedGraph {
     if (!closure) {
       closure = () => ({});
     }
-    return {
+    let result = {
       'kind': 'function',
       'source': value.toString(),
       'closure': this.add(closure()),
       'prototype': this.add(value.prototype)
     };
+
+    this.serializeProperties(value, result);
+
+    return result;
   }
 
   /**
@@ -93,9 +97,31 @@ export class SerializedGraph {
    * @param value The object to serialize.
    */
   private serializeObject(value: any): any {
+    let result = {
+      'kind': 'object',
+      'prototype': this.add(Object.getPrototypeOf(value))
+    };
+
+    this.serializeProperties(value, result);
+
+    return result;
+  }
+
+  /**
+   * Serializes a value's properties.
+   * @param value The value whose properties to serialize.
+   * @param serializedValue A serialized version of the value.
+   * Its 'refs' and 'descriptions' properties will be updated by this
+   * method.
+   */
+  private serializeProperties(value: any, serializedValue: any): void {
     let refs = {};
     let descriptions = {};
     for (let key of Object.getOwnPropertyNames(value)) {
+      if (key === '__closure') {
+        continue;
+      }
+
       let desc = Object.getOwnPropertyDescriptor(value, key);
       if ('value' in desc && desc.configurable && desc.writable && desc.enumerable) {
         // Typical property. Just encode its value and be done with it.
@@ -120,12 +146,9 @@ export class SerializedGraph {
         descriptions[key] = serializedDesc;
       }
     }
-    return {
-      'kind': 'object',
-      'prototype': this.add(Object.getPrototypeOf(value)),
-      'refs': refs,
-      'descriptions': descriptions
-    };
+
+    serializedValue.refs = refs;
+    serializedValue.descriptions = descriptions;
   }
 
   /**
@@ -204,37 +227,18 @@ export class SerializedGraph {
       // there may be cycles in the graph of serialized objects.
       let results = Object.create(this.get(value.prototype));
       this.indexMap.push({ element: results, index: valueIndex });
-      for (let key in value.refs) {
-        results[key] = this.get(value.refs[key]);
-      }
-      for (let key in value.descriptions) {
-        // Object property descriptions require some extra love.
-        let desc = value.descriptions[key];
-        let parsedDesc = { ...desc, };
-        if (desc.get) {
-          parsedDesc.get = this.get(desc.get);
-        }
-        if (desc.set) {
-          parsedDesc.set = this.get(desc.set);
-        }
-        if (desc.value) {
-          parsedDesc.value = this.get(desc.value);
-        }
-        Object.defineProperty(results, key, parsedDesc);
-      }
+      this.deserializeProperties(value, results);
       return results;
     } else if (value.kind === 'function') {
       // Decoding functions is tricky because the closure of
       // a function may refer to that function. At the same
       // time, function implementations are immutable.
       // To get around that, we'll use a dirty little hack: create
-      // a stub that calls a property of itself. Put that
-      // in the index map and overwrite it later. 
-      let stub = function() {
-        return (<any>stub).__impl.apply(this, arguments);
+      // a thunk that calls a property of itself.
+      let thunk = function() {
+        return (<any>thunk).__impl.apply(this, arguments);
       }
-      let resultIndex = this.indexMap.length;
-      this.indexMap.push({ element: stub, index: valueIndex });
+      this.indexMap.push({ element: thunk, index: valueIndex });
 
       // Synthesize a snippet of code we can evaluate.
       let deserializedClosure = this.get(value.closure);
@@ -247,13 +251,15 @@ export class SerializedGraph {
       let code = `(function(${capturedVarKeys.join(", ")}) { return (${value.source}); })`;
 
       // Evaluate the code.
-      let result = eval(code).apply(undefined, capturedVarVals);
-      result.prototype = this.get(value.prototype);
+      let impl = eval(code).apply(undefined, capturedVarVals);
+      impl.prototype = this.get(value.prototype);
 
-      // Patch the stub and index map.
-      (<any>stub).__impl = result;
-      this.indexMap[resultIndex] = { element: result, index: valueIndex };
-      return result;
+      // Patch the thunk.
+      (<any>thunk).__impl = impl;
+      (<any>thunk).prototype = impl.prototype;
+      this.deserializeProperties(value, thunk);
+
+      return thunk;
     } else if (value.kind === 'builtin') {
       let builtin = getBuiltinByName(value.name);
       if (builtin === undefined) {
@@ -274,6 +280,32 @@ export class SerializedGraph {
       return result;
     } else {
       throw new Error(`Cannot deserialize unrecognized content kind '${value.kind}'.`);
+    }
+  }
+
+  /**
+   * Deserializes a serialized value's properties.
+   * @param value The serialized value.
+   * @param deserializedValue The deserialized value to update.s
+   */
+  private deserializeProperties(value: any, deserializedValue: any): void {
+    for (let key in value.refs) {
+      deserializedValue[key] = this.get(value.refs[key]);
+    }
+    for (let key in value.descriptions) {
+      // Object property descriptions require some extra love.
+      let desc = value.descriptions[key];
+      let parsedDesc = { ...desc, };
+      if (desc.get) {
+        parsedDesc.get = this.get(desc.get);
+      }
+      if (desc.set) {
+        parsedDesc.set = this.get(desc.set);
+      }
+      if (desc.value) {
+        parsedDesc.value = this.get(desc.value);
+      }
+      Object.defineProperty(deserializedValue, key, parsedDesc);
     }
   }
 
