@@ -72,4 +72,26 @@ describe('Roundtripping', () => {
     builder.__closure = () => ({ Vector2 });
     expect(roundtrip(builder)().lengthSquared()).to.equal(25);
   });
+
+  it("can round-trip static methods", () => {
+    var Person = /** @class */ (function () {
+        var _a;
+        var Person: any = function (name, email) {
+            this.name = name;
+            this.email = email;
+        }
+        Person.prototype.toString = function () {
+            return this.name + " <" + this.email + ">";
+        };
+        Person.create = (_a = function (name, email) {
+            return new Person(name, email);
+        }, _a.__closure = () => ({ Person }), _a);
+        return Person;
+    }());
+
+    var create: any = function () { return Person.create("Clark Kent", "clark.kent@gmail.com"); };
+    create.__closure = () => ({ Person });
+
+    expect(roundtrip(create)().toString()).to.equal(create().toString());
+  });
 });
