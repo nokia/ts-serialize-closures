@@ -309,7 +309,12 @@ function visitor(ctx: ts.TransformationContext) {
 
     return node => {
       if (ts.isIdentifier(node)) {
-        captured.use(node);
+        if (node.text !== "undefined"
+          && node.text !== "null"
+          && node.text !== "arguments") {
+
+            captured.use(node);
+        }
         return node;
       } else if (ts.isTypeNode(node)) {
         // Don't visit type nodes.
