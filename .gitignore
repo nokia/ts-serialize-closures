@@ -2,8 +2,8 @@
 dist/
 
 # Ignore generated files.
-**/src/*.js
-ts-closure-transform/test/serialization/*.js
+**/*.js
+!ts-closure-transform/test/fixture/*.js
 
 # Ignore node modules.
 node_modules/
