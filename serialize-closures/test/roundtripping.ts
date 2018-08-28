@@ -1,13 +1,13 @@
 import { expect } from 'chai';
-import { deserialize, serialize } from '../src';
+import { deserialize, serialize, BuiltinList } from '../src';
 
 describe('Roundtripping', () => {
-  function roundtrip(value) {
-    return deserialize(JSON.parse(JSON.stringify(serialize(value))));
+  function roundtrip(value, builtins?: BuiltinList) {
+    return deserialize(JSON.parse(JSON.stringify(serialize(value, builtins))), builtins);
   }
   
-  function expectRoundtrip(value) {
-    expect(roundtrip(value)).to.deep.equal(value);
+  function expectRoundtrip(value, builtins?: BuiltinList) {
+    expect(roundtrip(value, builtins)).to.deep.equal(value);
   }
 
   it("can round-trip primitives", () => {
@@ -93,5 +93,14 @@ describe('Roundtripping', () => {
     create.__closure = () => ({ Person });
 
     expect(roundtrip(create)().toString()).to.equal(create().toString());
+  });
+
+  it("can roundtrip custom builtins", () => {
+    let myBuiltin = { value: "Oh hi Mark!" };
+    expect(
+      roundtrip(
+        myBuiltin,
+        [{ name: "myBuiltin", builtin: myBuiltin }]))
+      .to.equal(myBuiltin);
   });
 });
