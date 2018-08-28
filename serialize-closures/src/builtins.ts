@@ -1,9 +1,19 @@
 import { isPrimitive } from "util";
 
-type BuiltinRecord = {name: string, builtin: any };
-type BuiltinList = ReadonlyArray<BuiltinRecord>;
+/**
+ * A record for a single builtin in a list of builtins.
+ */
+export type BuiltinRecord = { name: string, builtin: any };
 
-const rootBuiltinNames: ReadonlyArray<string> = [
+/**
+ * A read-only list of builtins.
+ */
+export type BuiltinList = ReadonlyArray<BuiltinRecord>;
+
+/**
+ * A list of all global JavaScript objects.
+ */
+export const rootBuiltinNames: ReadonlyArray<string> = [
   // This list is based on the list of JavaScript global
   // objects at
   //
@@ -96,17 +106,29 @@ const rootBuiltinNames: ReadonlyArray<string> = [
 /**
  * A default collection of builtins to give special treatment.
  */
-export const builtins: BuiltinList = expandBuiltins(
-  rootBuiltinNames
-    .filter(name => eval(`typeof ${name}`) !== 'undefined')
-    .map(name => ({ name, builtin: eval(name) })));
+export const defaultBuiltins: BuiltinList = generateDefaultBuiltins();
 
 /**
- * Takes a list of builtins and expands it to include all
+ * Generates the default collection of builtins in the current context.
+ * This may differ from the value in `defaultBuiltins` if this function
+ * is called from a different VM context.
+ * @param rootNames A list of root builtin names.
+ * If not specified, `rootBuiltinNames` is assumed.
+ */
+export function generateDefaultBuiltins(rootNames?: ReadonlyArray<string>): BuiltinList {
+  rootNames = rootNames || rootBuiltinNames;
+  return expandBuiltins(
+    rootNames
+      .filter(name => eval(`typeof ${name}`) !== 'undefined')
+      .map(name => ({ name, builtin: eval(name) })));
+}
+
+/**
+ * Takes a list of root builtins and expands it to include all
  * properties reachable from those builtins.
  * @param roots The root builtins to start searching from.
  */
-function expandBuiltins(roots: BuiltinList): BuiltinList {
+export function expandBuiltins(roots: BuiltinList): BuiltinList {
 
   let results: BuiltinRecord[] = [];
   let worklist: BuiltinRecord[] = [];
@@ -154,7 +176,7 @@ function expandBuiltins(roots: BuiltinList): BuiltinList {
  * given name; otherwise, `false`.
  */
 export function getBuiltinByName(builtinName: string, builtinList?: BuiltinList): any {
-  builtinList = builtinList || builtins;
+  builtinList = builtinList || defaultBuiltins;
   for (let { name, builtin } of builtinList) {
     if (name === builtinName) {
       return builtin;
@@ -171,7 +193,7 @@ export function getBuiltinByName(builtinName: string, builtinList?: BuiltinList)
  * @returns The name of `value` if it is a builtin; otherwise, `undefined`.
  */
 export function getNameOfBuiltin(value: any, builtinList?: BuiltinList): string | undefined {
-  builtinList = builtinList || builtins;
+  builtinList = builtinList || defaultBuiltins;
   for (let { name, builtin } of builtinList) {
     if (value === builtin) {
       return name;

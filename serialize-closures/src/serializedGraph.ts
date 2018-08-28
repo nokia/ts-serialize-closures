@@ -1,5 +1,5 @@
 import { isPrimitive, isArray, isFunction, isDate, isRegExp } from "util";
-import { getNameOfBuiltin, getBuiltinByName } from "./builtins";
+import { getNameOfBuiltin, getBuiltinByName, BuiltinList, defaultBuiltins } from "./builtins";
 
 /**
  * Represents a graph of serialized values.
@@ -8,6 +8,7 @@ export class SerializedGraph {
   private indexMap: { element: any, index: number }[];
   private rootIndex: number;
   private contentArray: any[];
+  private builtins: BuiltinList;
 
   /**
    * Creates a new graph of serialized values.
@@ -16,26 +17,33 @@ export class SerializedGraph {
     this.indexMap = [];
     this.rootIndex = -1;
     this.contentArray = [];
+    this.builtins = defaultBuiltins;
   }
 
   /**
    * Serializes a value, producing a serialized graph.
    * @param value The value to serialize.
+   * @param builtins An optional list of builtins to use.
+   * If not specified, the default builtins are used.
    */
-  static serialize(value: any): SerializedGraph {
+  static serialize(value: any, builtins?: BuiltinList): SerializedGraph {
     let graph = new SerializedGraph();
     graph.rootIndex = graph.add(value);
+    graph.builtins = builtins;
     return graph;
   }
 
   /**
    * Converts JSON to a serialized graph.
    * @param json The JSON to interpret as a serialized graph.
+   * @param builtins An optional list of builtins to use.
+   * If not specified, the default builtins are used.
    */
-  static fromJSON(json: any): SerializedGraph {
+  static fromJSON(json: any, builtins?: BuiltinList): SerializedGraph {
     let graph = new SerializedGraph();
     graph.rootIndex = json.root;
     graph.contentArray = json.data;
+    graph.builtins = builtins;
     return graph;
   }
 
@@ -158,7 +166,7 @@ export class SerializedGraph {
    */
   private serialize(value: any): any {
     // Check if the value is a builtin before proceeding.
-    let builtinName = getNameOfBuiltin(value);
+    let builtinName = getNameOfBuiltin(value, this.builtins);
     if (builtinName !== undefined) {
       return {
         'kind': 'builtin',
@@ -261,7 +269,7 @@ export class SerializedGraph {
 
       return thunk;
     } else if (value.kind === 'builtin') {
-      let builtin = getBuiltinByName(value.name);
+      let builtin = getBuiltinByName(value.name, this.builtins);
       if (builtin === undefined) {
         throw new Error(`Cannot deserialize unknown builtin '${value.name}'.`);
       } else {
