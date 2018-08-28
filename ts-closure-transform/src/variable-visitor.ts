@@ -1,5 +1,5 @@
 import * as ts from 'typescript';
-import { simplifyExpression } from './simplify';
+import { simplifyExpression, noAssignmentTokenMapping } from './simplify';
 
 /**
  * The type of a unique variable identifier.
@@ -379,7 +379,7 @@ export abstract class VariableVisitor {
         } else {
           return visited;
         }
-      } else if (node.operatorToken.kind in VariableVisitor.noAssignmentMapping) {
+      } else if (node.operatorToken.kind in noAssignmentTokenMapping) {
         let rewrite = this.visitAssignment(lhs, id);
         if (rewrite) {
           return rewrite(
@@ -388,7 +388,7 @@ export abstract class VariableVisitor {
               lhs,
               ts.createBinary(
                 this.visitUse(lhs, id),
-                VariableVisitor.noAssignmentMapping[node.operatorToken.kind],
+                noAssignmentTokenMapping[node.operatorToken.kind],
                 this.visitExpression(node.right)),
               ts.createToken(ts.SyntaxKind.EqualsToken)));
         } else {
@@ -404,21 +404,6 @@ export abstract class VariableVisitor {
       return this.visitChildren(node);
     }
   }
-
-  private static noAssignmentMapping = {
-    [ts.SyntaxKind.PlusEqualsToken]: ts.SyntaxKind.PlusToken,
-    [ts.SyntaxKind.MinusEqualsToken]: ts.SyntaxKind.MinusToken,
-    [ts.SyntaxKind.AsteriskEqualsToken]: ts.SyntaxKind.AsteriskToken,
-    [ts.SyntaxKind.AsteriskAsteriskEqualsToken]: ts.SyntaxKind.AsteriskAsteriskToken,
-    [ts.SyntaxKind.SlashEqualsToken]: ts.SyntaxKind.SlashToken,
-    [ts.SyntaxKind.PercentEqualsToken]: ts.SyntaxKind.PercentToken,
-    [ts.SyntaxKind.LessThanLessThanEqualsToken]: ts.SyntaxKind.LessThanLessThanToken,
-    [ts.SyntaxKind.GreaterThanGreaterThanEqualsToken]: ts.SyntaxKind.GreaterThanGreaterThanToken,
-    [ts.SyntaxKind.AmpersandEqualsToken]: ts.SyntaxKind.AmpersandToken,
-    [ts.SyntaxKind.BarEqualsToken]: ts.SyntaxKind.BarToken,
-    [ts.SyntaxKind.CaretEqualsToken]: ts.SyntaxKind.CaretToken,
-    [ts.SyntaxKind.GreaterThanGreaterThanGreaterThanEqualsToken]: ts.SyntaxKind.GreaterThanGreaterThanGreaterThanToken
-  };
 
   /**
    * Visits a pre-increment or pre-decrement expression.
