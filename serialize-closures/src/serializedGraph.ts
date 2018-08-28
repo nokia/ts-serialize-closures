@@ -259,7 +259,7 @@ export class SerializedGraph {
       let code = `(function(${capturedVarKeys.join(", ")}) { return (${value.source}); })`;
 
       // Evaluate the code.
-      let impl = eval(code).apply(undefined, capturedVarVals);
+      let impl = this.evalInThisContext(code).apply(undefined, capturedVarVals);
       impl.prototype = this.get(value.prototype);
 
       // Patch the thunk.
@@ -283,11 +283,26 @@ export class SerializedGraph {
     } else if (value.kind === 'regex') {
       // TODO: maybe figure out a better way to parse regexes
       // than a call to `eval`?
-      let result = eval(value.value);
+      let result = this.evalInThisContext(value.value);
       this.indexMap.push({ element: result, index: valueIndex });
       return result;
     } else {
       throw new Error(`Cannot deserialize unrecognized content kind '${value.kind}'.`);
+    }
+  }
+
+  /**
+   * Tries to evaluate a string of code in the context of
+   * the builtin list.
+   * @param code The code to evaluate.
+   */
+  private evalInThisContext(code: string) {
+    // Use 'vm.runInThisContext' if we can and use 'eval' if we have to.
+    if (eval("typeof vm") !== 'undefined') {
+      let vm = eval("vm");
+      return vm.runInThisContext(code);
+    } else {
+      return eval(code);
     }
   }
 
