@@ -94,7 +94,7 @@ const rootBuiltinNames: ReadonlyArray<string> = [
 ];
 
 /**
- * A collection of builtins to give special treatment.
+ * A default collection of builtins to give special treatment.
  */
 export const builtins: BuiltinList = expandBuiltins(
   rootBuiltinNames
@@ -123,7 +123,7 @@ function expandBuiltins(roots: BuiltinList): BuiltinList {
 
   while (worklist.length > 0) {
     let record = worklist.shift();
-    if (getNameOfBuiltinImpl(record.builtin, results) === undefined) {
+    if (getNameOfBuiltin(record.builtin, results) === undefined) {
       // Builtin does not exist already. Add it to the results.
       results.push(record);
       // Add the builtin's properties to the worklist.
@@ -148,22 +148,16 @@ function expandBuiltins(roots: BuiltinList): BuiltinList {
 /**
  * Gets a builtin by name.
  * @param builtinName The name of the builtin to look for.
+ * @param builtinList An optional list of builtins to search through.
+ * If defined, `builtinList` is used instead of the default builtins.
  * @returns The builtin if there is a builtin matching the
  * given name; otherwise, `false`.
  */
-export function getBuiltinByName(builtinName: string): any {
-  for (let { name, builtin } of builtins) {
+export function getBuiltinByName(builtinName: string, builtinList?: BuiltinList): any {
+  builtinList = builtinList || builtins;
+  for (let { name, builtin } of builtinList) {
     if (name === builtinName) {
       return builtin;
-    }
-  }
-  return undefined;
-}
-
-function getNameOfBuiltinImpl(value: any, builtinList: BuiltinList): string | undefined {
-  for (let { name, builtin } of builtinList) {
-    if (value === builtin) {
-      return name;
     }
   }
   return undefined;
@@ -172,8 +166,16 @@ function getNameOfBuiltinImpl(value: any, builtinList: BuiltinList): string | un
 /**
  * Gets the name of a builtin.
  * @param value The builtin to name.
- * @returns The name of `value` if it is a builtin; otherwise, `false`.
+ * @param builtinList An optional list of builtins to search through.
+ * If defined, `builtinList` is used instead of the default builtins.
+ * @returns The name of `value` if it is a builtin; otherwise, `undefined`.
  */
-export function getNameOfBuiltin(value: any): string | undefined {
-  return getNameOfBuiltinImpl(value, builtins);
+export function getNameOfBuiltin(value: any, builtinList?: BuiltinList): string | undefined {
+  builtinList = builtinList || builtins;
+  for (let { name, builtin } of builtinList) {
+    if (value === builtin) {
+      return name;
+    }
+  }
+  return undefined;
 }
