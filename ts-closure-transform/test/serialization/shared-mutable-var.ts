@@ -23,3 +23,15 @@ export function sharedMutableVariableTest() {
   roundtrippedCounter.increment();
   expect(counter.get()).to.equal(roundtrippedCounter.get());
 }
+
+let sharedGlobal = 0;
+function incrementSharedGlobal() {
+  return sharedGlobal++;
+}
+
+export function sharedMutableVariableTest2() {
+  let inc = roundtrip(incrementSharedGlobal);
+
+  expect(incrementSharedGlobal()).to.equal(inc());
+  expect(incrementSharedGlobal()).to.equal(inc());
+}
