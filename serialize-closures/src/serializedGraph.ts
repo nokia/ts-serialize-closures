@@ -126,7 +126,9 @@ export class SerializedGraph {
     let refs = {};
     let descriptions = {};
     for (let key of Object.getOwnPropertyNames(value)) {
-      if (key === '__closure') {
+      if (key.length > 2 && key.substr(0, 2) === '__') {
+        // Ignore keys that start with two underscores. There's
+        // a reason those underscores are there.
         continue;
       }
 
