@@ -34,7 +34,7 @@ The serializer consists of two components.
       options: {
         getCustomTransformers: () => ({
           before: [beforeTransform()],
-          after: [beforeTransform()]
+          after: [afterTransform()]
         })
       }
       // ...
