@@ -1,5 +1,6 @@
 import { expect } from 'chai';
-import { deserialize, serialize, BuiltinList } from '../src';
+import { deserialize, serialize, BuiltinList, generateDefaultBuiltins } from '../src';
+import * as vm from 'vm';
 
 describe('Roundtripping', () => {
   function roundtrip(value, builtins?: BuiltinList) {
@@ -58,7 +59,7 @@ describe('Roundtripping', () => {
     expect(roundtrip(f)(42)).to.equal(52);
   });
 
-  it("can roundtrip builtins", () => {
+  it("can round-trip builtins", () => {
     expectRoundtrip(Math);
   });
 
@@ -95,12 +96,23 @@ describe('Roundtripping', () => {
     expect(roundtrip(create)().toString()).to.equal(create().toString());
   });
 
-  it("can roundtrip custom builtins", () => {
+  it("can round-trip custom builtins", () => {
     let myBuiltin = { value: "Oh hi Mark!" };
     expect(
       roundtrip(
         myBuiltin,
         [{ name: "myBuiltin", builtin: myBuiltin }]))
       .to.equal(myBuiltin);
+  });
+
+  it("works with vm.runInContext", () => {
+    let context = vm.createContext({ generateDefaultBuiltins });
+    let box = vm.runInContext(
+      '{ value: "Oh hi Mark!" }',
+      context);
+    let builtins = vm.runInContext(
+      'generateDefaultBuiltins()',
+      context);
+    expect(roundtrip(box, builtins)).to.deep.equal(box);
   });
 });
