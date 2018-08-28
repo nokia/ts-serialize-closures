@@ -358,6 +358,6 @@ function visitor(ctx: ts.TransformationContext) {
 
 export default function() {
   return (ctx: ts.TransformationContext): ts.Transformer<ts.SourceFile> => {
-    return (sf: ts.SourceFile) => ts.visitNode(sf, visitor(ctx))
+    return (sf: ts.SourceFile) => ts.visitNode(sf, visitor(ctx));
   }
 }

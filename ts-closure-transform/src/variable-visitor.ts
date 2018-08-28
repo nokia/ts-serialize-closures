@@ -6,12 +6,64 @@ import * as ts from 'typescript';
 export type VariableId = number;
 
 /**
+ * A backing store for variable numbering.
+ */
+export class VariableNumberingStore {
+  private readonly numbering: { name: ts.Identifier, id: VariableId }[];
+  private counter: number;
+
+  /**
+   * Creates an empty variable numbering store.
+   */
+  constructor() {
+    this.numbering = [];
+    this.counter = 0;
+  }
+
+  /**
+   * Sets the variable id of an identifier.
+   * @param identifier An identifier.
+   * @param id The variable id to assign to `identifier`.
+   */
+  setId(identifier: ts.Identifier, id: VariableId): void {
+    for (let record of this.numbering) {
+      if (record.name === identifier) {
+        record.id = id;
+        return;
+      }
+    }
+    this.numbering.push({ name: identifier, id });
+  }
+
+  /**
+   * Gets the variable id for a particular identifier.
+   * If the identifier has not been associated with a variable
+   * id yet, then a new one is created.
+   * @param identifier The identifier to find a variable id for.
+   */
+  getOrCreateId(identifier: ts.Identifier): VariableId {
+    for (let { name, id } of this.numbering) {
+      if (name === identifier) {
+        return id;
+      }
+    }
+    let id = this.counter++;
+    this.numbering.push({ name: identifier, id });
+    return id;
+  }
+}
+
+/**
  * A scope data structure that assigns a unique id to each variable.
  */
 export class VariableNumberingScope {
   private readonly localVariables: { [name: string]: VariableId };
   private readonly parent: VariableNumberingScope | undefined;
-  private readonly counter: { value: number };
+
+  /**
+   * The variable numbering store for this scope.
+   */
+  readonly store: VariableNumberingStore;
 
   /**
    * Tells if this scope is a function scope.
@@ -21,16 +73,20 @@ export class VariableNumberingScope {
   /**
    * Creates a variable numbering scope.
    * @param isFunctionScope Tells if the scope is a function scope.
-   * @param parent A parent scope.
+   * @param parentOrStore A parent scope or a variable numbering store.
    */
-  constructor(isFunctionScope: boolean, parent?: VariableNumberingScope) {
+  constructor(isFunctionScope: boolean, parentOrStore?: VariableNumberingScope | VariableNumberingStore) {
     this.isFunctionScope = isFunctionScope;
     this.localVariables = {};
-    this.parent = parent;
-    if (parent) {
-      this.counter = parent.counter;
+    if (!parentOrStore) {
+      this.parent = undefined;
+      this.store = new VariableNumberingStore();
+    } else if (parentOrStore instanceof VariableNumberingScope) {
+      this.parent = parentOrStore;
+      this.store = parentOrStore.store;
     } else {
-      this.counter = { value: 0 };
+      this.parent = undefined;
+      this.store = parentOrStore;
     }
   }
 
@@ -39,9 +95,11 @@ export class VariableNumberingScope {
    * the current scope.
    * @param name The name of the variable to define.
    */
-  define(name: string): VariableId {
-    let newId = this.counter.value++;
-    this.localVariables[name] = newId;
+  define(name: ts.Identifier): VariableId {
+    let newId = this.store.getOrCreateId(name);
+    if (name.text !== "") {
+      this.localVariables[name.text] = newId;
+    }
     return newId;
   }
 
@@ -50,11 +108,15 @@ export class VariableNumberingScope {
    * particular name in the current scope.
    * @param name The name of the variable.
    */
-  getId(name: string): VariableId {
-    if (name in this.localVariables) {
+  getId(name: ts.Identifier): VariableId {
+    let text = name.text;
+    if (text in this.localVariables) {
       // If the name is defined in the local variables,
-      // then just grab its id.
-      return this.localVariables[name];
+      // then just grab its id. Also, don't forget to
+      // update the variable numbering store.
+      let id = this.localVariables[text];
+      this.store.setId(name, id);
+      return id;
     } else if (this.parent) {
       // If the scope has a parent and the name is not defined
       // as a local variable, then defer to the parent.
@@ -97,10 +159,18 @@ export abstract class VariableVisitor {
   /**
    * Creates a variable visitor.
    * @param ctx The visitor's transformation context.
+   * @param store An optional variable numbering store.
    */
-  constructor(ctx: ts.TransformationContext) {
+  constructor(ctx: ts.TransformationContext, store?: VariableNumberingStore) {
     this.ctx = ctx;
-    this.scope = new VariableNumberingScope(true);
+    this.scope = new VariableNumberingScope(true, store);
+  }
+
+  /**
+   * Gets the variable numbering store used by this visitor.
+   */
+  get store(): VariableNumberingStore {
+    return this.scope.store;
   }
 
   /**
@@ -150,7 +220,7 @@ export abstract class VariableVisitor {
     }
     // Expressions
     else if (ts.isIdentifier(node)) {
-      return this.visitUse(node, this.scope.getId(node.text));
+      return this.visitUse(node, this.scope.getId(node));
 
     } else if (ts.isPropertyAccessExpression(node)) {
       return ts.updatePropertyAccess(
@@ -198,7 +268,13 @@ export abstract class VariableVisitor {
         this.defineVariables(param.name);
       }
 
-      let body = this.visitChildren(node.body);
+      let body = node.body;
+      if (ts.isBlock(body)) {
+        body = this.visitBlock(body);
+      } else {
+        body = this.visitExpression(body);
+      }
+
       this.scope = oldScope;
       return ts.updateArrowFunction(
         node,
@@ -220,7 +296,8 @@ export abstract class VariableVisitor {
         this.defineVariables(param.name);
       }
 
-      let body = this.visitChildren(node.body);
+      let body = this.visitBlock(node.body);
+
       this.scope = oldScope;
       return ts.updateFunctionExpression(
         node,
@@ -243,7 +320,8 @@ export abstract class VariableVisitor {
         this.defineVariables(param.name);
       }
 
-      let body = this.visitChildren(node.body);
+      let body = this.visitBlock(node.body);
+
       this.scope = oldScope;
       return ts.updateFunctionDeclaration(
         node,
@@ -269,6 +347,15 @@ export abstract class VariableVisitor {
     return ts.visitEachChild(node, n => this.visit(n), this.ctx);
   }
 
+  private visitBlock(block: ts.Block): ts.Block {
+    return ts.updateBlock(
+      block,
+      ts.visitLexicalEnvironment(
+        block.statements,
+        n => this.visit(n),
+        this.ctx));
+  }
+
   /**
    * Visits a binary expression.
    * @param node The expression to visit.
@@ -277,14 +364,14 @@ export abstract class VariableVisitor {
     let lhs = node.left;
     if (ts.isIdentifier(lhs)) {
       // Syntax we'd like to handle: identifier [+,-,*,/,...]= rhs;
-      let id = this.scope.getId(lhs.text);
+      let id = this.scope.getId(lhs);
 
       if (node.operatorToken.kind === ts.SyntaxKind.EqualsToken) {
         let visited = ts.updateBinary(
           node,
           lhs,
           this.visitExpression(node.right),
-          node.operatorToken);  
+          node.operatorToken);
         let rewrite = this.visitAssignment(lhs, id);
         if (rewrite) {
           return rewrite(visited);
@@ -338,7 +425,7 @@ export abstract class VariableVisitor {
    */
   private visitPreUpdateExpression(expression: ts.PrefixUnaryExpression): ts.Expression {
     if (ts.isIdentifier(expression.operand)) {
-      let id = this.scope.getId(expression.operand.text);
+      let id = this.scope.getId(expression.operand);
       let rewrite = this.visitAssignment(expression.operand, id);
       if (rewrite) {
         // Rewrite pre-increment and pre-decrement updates by desugaring them and
@@ -366,28 +453,42 @@ export abstract class VariableVisitor {
    */
   private visitPostUpdateExpression(expression: ts.PostfixUnaryExpression): ts.Expression {
     if (ts.isIdentifier(expression.operand)) {
-      let id = this.scope.getId(expression.operand.text);
+      let id = this.scope.getId(expression.operand);
       let rewrite = this.visitAssignment(expression.operand, id);
       if (rewrite) {
         // Rewrite post-increment and post-decrement updates by desugaring them and
         // then rewriting the desugared version.
-        let firstUse = this.visitUse(expression.operand, id);
         let secondUse = this.visitUse(expression.operand, id);
-        let temp = this.createTempVariable();
         let value = expression.operator === ts.SyntaxKind.PlusPlusToken
           ? ts.createAdd(secondUse, ts.createLiteral(1))
           : ts.createSubtract(secondUse, ts.createLiteral(1));
 
-        return ts.createCommaList(
-          [
-            ts.createAssignment(
-              temp,
-              firstUse),
+        if (ts.isExpressionStatement(expression.parent)
+          || ts.isForStatement(expression.parent)) {
+          // If the postfix update's parent is an expression statement or a
+          // 'for' statement then we don't need an extra variable.
+          return rewrite(
             ts.createAssignment(
               expression.operand,
-              rewrite(value)),
-            temp
-          ]);
+              value));
+        } else {
+          let temp = this.createTempVariable();
+          this.ctx.hoistVariableDeclaration(temp);
+
+          let firstUse = this.visitUse(expression.operand, id);
+
+          return ts.createCommaList(
+            [
+              ts.createAssignment(
+                temp,
+                firstUse),
+              rewrite(
+                ts.createAssignment(
+                  expression.operand,
+                  value)),
+              temp
+            ]);
+        }
       } else {
         return expression;
       }
@@ -404,7 +505,7 @@ export abstract class VariableVisitor {
     if (name === undefined) {
 
     } else if (ts.isIdentifier(name)) {
-      this.scope.define(name.text);
+      this.scope.define(name);
     } else if (ts.isArrayBindingPattern(name)) {
       for (let elem of name.elements) {
         if (ts.isBindingElement(elem)) {
@@ -454,12 +555,13 @@ export abstract class VariableVisitor {
           ts.updateVariableDeclarationList(
             statement.declarationList,
             declarations)));
+      declarations = [];
     }
 
     let visitBinding = (name: ts.BindingName): ts.BindingName => {
 
       if (ts.isIdentifier(name)) {
-        let id = this.scope.getId(name.text);
+        let id = this.scope.getId(name);
         let init = this.visitDef(name, id);
         let rewrite = this.visitAssignment(name, id);
         if (rewrite) {
@@ -525,7 +627,7 @@ export abstract class VariableVisitor {
         // Simple initializations get special treatment because they
         // don't need a special fix-up statement, even if they are
         // rewritten.
-        let id = this.scope.getId(name.text);
+        let id = this.scope.getId(name);
         let customInit = this.visitDef(name, id);
         if (initializer) {
           let rewrite = this.visitAssignment(name, id);
@@ -583,7 +685,7 @@ export abstract class VariableVisitor {
    */
   private createTempVariable(): ts.Identifier {
     let result = ts.createTempVariable(undefined);
-    this.scope.define(result.text);
+    this.scope.define(result);
     return result;
   }
 }
