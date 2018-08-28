@@ -4,6 +4,6 @@ function createCounter() {
     count.value = 0;
     return {
         get: (_a = () => count.value, _a.__closure = () => ({ count }), _a),
-        increment: (_b = () => { count.value = count.value + 1; }, _b.__closure = () => ({ count }), _b)
+        increment: (_b = () => { ++count.value; }, _b.__closure = () => ({ count }), _b)
     };
 }

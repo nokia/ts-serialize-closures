@@ -1,4 +1,5 @@
 import * as ts from 'typescript';
+import { simplifyExpression } from './simplify';
 
 /**
  * The type of a unique variable identifier.
@@ -435,10 +436,11 @@ export abstract class VariableVisitor {
           ? ts.createAdd(use, ts.createLiteral(1))
           : ts.createSubtract(use, ts.createLiteral(1));
 
-        return rewrite(
-          ts.createAssignment(
-            expression.operand,
-            value));
+        return simplifyExpression(
+          rewrite(
+            ts.createAssignment(
+              expression.operand,
+              value)));
       } else {
         return expression;
       }
@@ -467,10 +469,11 @@ export abstract class VariableVisitor {
           || ts.isForStatement(expression.parent)) {
           // If the postfix update's parent is an expression statement or a
           // 'for' statement then we don't need an extra variable.
-          return rewrite(
-            ts.createAssignment(
-              expression.operand,
-              value));
+          return simplifyExpression(
+            rewrite(
+              ts.createAssignment(
+                expression.operand,
+                value)));
         } else {
           let temp = this.createTempVariable();
           this.ctx.hoistVariableDeclaration(temp);
@@ -482,10 +485,11 @@ export abstract class VariableVisitor {
               ts.createAssignment(
                 temp,
                 firstUse),
-              rewrite(
-                ts.createAssignment(
-                  expression.operand,
-                  value)),
+              simplifyExpression(
+                rewrite(
+                  ts.createAssignment(
+                    expression.operand,
+                    value))),
               temp
             ]);
         }
