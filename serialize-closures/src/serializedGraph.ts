@@ -28,8 +28,8 @@ export class SerializedGraph {
    */
   static serialize(value: any, builtins?: BuiltinList): SerializedGraph {
     let graph = new SerializedGraph();
-    graph.rootIndex = graph.add(value);
     graph.builtins = builtins;
+    graph.rootIndex = graph.add(value);
     return graph;
   }
 
