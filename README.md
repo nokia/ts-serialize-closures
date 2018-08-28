@@ -65,6 +65,4 @@ The serializer consists of two components.
 
   * Serializing class definitions works, but only if they are first lowered to function definitions by the TypeScript compiler, i.e., the target is ES5 or lower.
 
-  * Captured variables shared between serialized closures are no longer shared after serialization.
-
   * Functions can only be serialized and deserialized *once.* There is no support for serializing a deserialized function.
