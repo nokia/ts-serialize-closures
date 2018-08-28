@@ -115,4 +115,8 @@ describe('Roundtripping', () => {
       context);
     expect(roundtrip(box, builtins)).to.deep.equal(box);
   });
+
+  it("elides twice-underscore-prefixed properties", () => {
+    expect(roundtrip({ "__elide_this": 10 })).to.deep.equal({ });
+  });
 });
