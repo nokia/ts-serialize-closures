@@ -1,5 +1,5 @@
 {
-  "name": "serialize-closures",
+  "name": "@xstream/serialize-closures",
   "version": "0.1.0",
   "description": "Serializes closures processed by the ts-closure-transform package.",
   "main": "dist/index.js",

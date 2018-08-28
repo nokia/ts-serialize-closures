@@ -1,5 +1,5 @@
 {
-  "name": "ts-closure-transform",
+  "name": "@xstream/ts-closure-transform",
   "version": "0.1.0",
   "description": "Rewrites functions to include a '__closure' property, suitable for function serialization.",
   "main": "dist/index.js",

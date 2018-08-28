@@ -13,5 +13,5 @@ clean:
 	rm -rf ts-closure-transform/src/*.js
 
 publish:
-	pushd serialize-closures; npm publish; popd
-	pushd ts-closure-transform; npm publish; popd
+	pushd serialize-closures; npm publish --registry https://npm.worldwidestreams.io; popd
+	pushd ts-closure-transform; npm publish --registry https://npm.worldwidestreams.io; popd
