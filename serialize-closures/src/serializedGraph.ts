@@ -1,5 +1,5 @@
 import { isPrimitive, isArray, isFunction, isDate, isRegExp } from "util";
-import { getNameOfBuiltin, getBuiltinByName, BuiltinList, defaultBuiltins } from "./builtins";
+import { getNameOfBuiltin, getBuiltinByName, BuiltinList, defaultBuiltins, generateDefaultBuiltins } from "./builtins";
 
 /**
  * Represents a graph of serialized values.
@@ -54,7 +54,11 @@ export class SerializedGraph {
     let graph = new SerializedGraph();
     graph.rootIndex = json.root;
     graph.contentArray = json.data;
-    graph.builtins = builtins;
+    if (builtins) {
+      graph.builtins = builtins;
+    } else if (evalImpl) {
+      graph.builtins = generateDefaultBuiltins(undefined, evalImpl);
+    }
     graph.evalImpl = evalImpl;
     return graph;
   }
@@ -311,13 +315,9 @@ export class SerializedGraph {
    */
   private evalInThisContext(code: string) {
     // Ideally, we'd like to use a custom `eval` implementation.
+    // Otherwise, `eval` will just have to do.
     if (this.evalImpl) {
       return this.evalImpl(code);
-    }
-    // Use `vm.runInThisContext` if we can and use `eval` if we have to.
-    else if (eval("typeof vm") !== 'undefined') {
-      let vm = eval("vm");
-      return vm.runInThisContext(code);
     } else {
       return eval(code);
     }

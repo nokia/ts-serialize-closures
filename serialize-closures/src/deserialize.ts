@@ -12,5 +12,6 @@ export default function deserialize(
   value: any,
   builtins?: BuiltinList,
   evalImpl?: (code: string) => any): any {
+
   return SerializedGraph.fromJSON(value, builtins, evalImpl).root;
 }

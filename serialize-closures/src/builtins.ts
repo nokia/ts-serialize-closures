@@ -111,16 +111,22 @@ export const defaultBuiltins: BuiltinList = generateDefaultBuiltins();
 /**
  * Generates the default collection of builtins in the current context.
  * This may differ from the value in `defaultBuiltins` if this function
- * is called from a different VM context.
+ * is called from a different VM context or if a different `evalImpl`
+ * function is specified.
  * @param rootNames A list of root builtin names.
  * If not specified, `rootBuiltinNames` is assumed.
+ * @param evalImpl A custom `eval` function to use.
  */
-export function generateDefaultBuiltins(rootNames?: ReadonlyArray<string>): BuiltinList {
+export function generateDefaultBuiltins(
+  rootNames?: ReadonlyArray<string>,
+  evalImpl?: (code: string) => any): BuiltinList {
+
+  evalImpl = evalImpl || eval;
   rootNames = rootNames || rootBuiltinNames;
   return expandBuiltins(
     rootNames
-      .filter(name => eval(`typeof ${name}`) !== 'undefined')
-      .map(name => ({ name, builtin: eval(name) })));
+      .filter(name => evalImpl(`typeof ${name}`) !== 'undefined')
+      .map(name => ({ name, builtin: evalImpl(name) })));
 }
 
 /**
