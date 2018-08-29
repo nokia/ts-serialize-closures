@@ -119,4 +119,25 @@ describe('Roundtripping', () => {
   it("elides twice-underscore-prefixed properties", () => {
     expect(roundtrip({ "__elide_this": 10 })).to.deep.equal({ });
   });
+
+  it("accepts a custom `eval` implementation", () => {
+    // This test serializes an object in the current context,
+    // then creates a new context and deserializes the object
+    // in that context. This represents the use-case of serializing
+    // objects in one sandbox and deserializing them in another.
+    let createBox = () => ({ value: "Oh hi Mark!" });
+    let serialized = serialize(createBox);
+
+    let context = vm.createContext({ generateDefaultBuiltins });
+    let evalImpl = code => vm.runInContext(code, context);
+    let builtins = evalImpl('generateDefaultBuiltins()');
+    let deserializedBox = deserialize(serialized, builtins, evalImpl)();
+    expect(deserializedBox).to.deep.equal(createBox());
+    // Prototypes should be different because they originate
+    // from different environments.
+    expect(Object.getPrototypeOf(deserializedBox))
+      .to.not.equal(Object.getPrototypeOf(createBox()));
+    expect(Object.getPrototypeOf(deserializedBox))
+      .to.equal(evalImpl("Object.prototype"));
+  });
 });
