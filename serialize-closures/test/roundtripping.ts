@@ -106,14 +106,13 @@ describe('Roundtripping', () => {
   });
 
   it("works with vm.runInContext", () => {
-    let context = vm.createContext({ generateDefaultBuiltins });
-    let box = vm.runInContext(
-      '{ value: "Oh hi Mark!" }',
-      context);
-    let builtins = vm.runInContext(
-      'generateDefaultBuiltins()',
-      context);
+    let context = vm.createContext();
+    let evalImpl = code => vm.runInContext(code, context);
+    let box = evalImpl('{ value: "Oh hi Mark!" }');
+    let builtins = generateDefaultBuiltins(undefined, evalImpl);
     expect(roundtrip(box, builtins)).to.deep.equal(box);
+    expect(Object.getPrototypeOf(roundtrip(box, builtins)))
+      .to.equal(Object.getPrototypeOf(box));
   });
 
   it("elides twice-underscore-prefixed properties", () => {
