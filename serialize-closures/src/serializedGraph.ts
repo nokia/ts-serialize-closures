@@ -9,6 +9,7 @@ export class SerializedGraph {
   private rootIndex: number;
   private contentArray: any[];
   private builtins: BuiltinList;
+  private evalImpl: undefined | ((code: string) => any);
 
   /**
    * Creates a new graph of serialized values.
@@ -18,6 +19,7 @@ export class SerializedGraph {
     this.rootIndex = -1;
     this.contentArray = [];
     this.builtins = defaultBuiltins;
+    this.evalImpl = undefined;
   }
 
   /**
@@ -26,7 +28,10 @@ export class SerializedGraph {
    * @param builtins An optional list of builtins to use.
    * If not specified, the default builtins are used.
    */
-  static serialize(value: any, builtins?: BuiltinList): SerializedGraph {
+  static serialize(
+    value: any,
+    builtins?: BuiltinList): SerializedGraph {
+
     let graph = new SerializedGraph();
     graph.builtins = builtins;
     graph.rootIndex = graph.add(value);
@@ -38,12 +43,19 @@ export class SerializedGraph {
    * @param json The JSON to interpret as a serialized graph.
    * @param builtins An optional list of builtins to use.
    * If not specified, the default builtins are used.
+   * @param evalImpl An `eval` implementation to use for
+   * evaluating functions or regular expressions.
    */
-  static fromJSON(json: any, builtins?: BuiltinList): SerializedGraph {
+  static fromJSON(
+    json: any,
+    builtins?: BuiltinList,
+    evalImpl?: (code: string) => any): SerializedGraph {
+
     let graph = new SerializedGraph();
     graph.rootIndex = json.root;
     graph.contentArray = json.data;
     graph.builtins = builtins;
+    graph.evalImpl = evalImpl;
     return graph;
   }
 
@@ -294,13 +306,16 @@ export class SerializedGraph {
   }
 
   /**
-   * Tries to evaluate a string of code in the context of
-   * the builtin list.
+   * Tries to evaluate a string of code..
    * @param code The code to evaluate.
    */
   private evalInThisContext(code: string) {
-    // Use 'vm.runInThisContext' if we can and use 'eval' if we have to.
-    if (eval("typeof vm") !== 'undefined') {
+    // Ideally, we'd like to use a custom `eval` implementation.
+    if (this.evalImpl) {
+      return this.evalImpl(code);
+    }
+    // Use `vm.runInThisContext` if we can and use `eval` if we have to.
+    else if (eval("typeof vm") !== 'undefined') {
       let vm = eval("vm");
       return vm.runInThisContext(code);
     } else {
