@@ -110,8 +110,9 @@ describe('Roundtripping', () => {
     let evalImpl = code => vm.runInContext(code, context);
     let box = evalImpl('{ value: "Oh hi Mark!" }');
     let builtins = generateDefaultBuiltins(undefined, evalImpl);
-    expect(roundtrip(box, builtins)).to.deep.equal(box);
-    expect(Object.getPrototypeOf(roundtrip(box, builtins)))
+    let roundtrippedBox = roundtrip(box, builtins);
+    expect(roundtrippedBox).to.deep.equal(box);
+    expect(Object.getPrototypeOf(roundtrippedBox))
       .to.equal(Object.getPrototypeOf(box));
   });
 
