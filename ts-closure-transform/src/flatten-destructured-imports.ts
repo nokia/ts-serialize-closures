@@ -108,9 +108,9 @@ function createVisitor(ctx: ts.TransformationContext): ts.Visitor {
                   [],
                   [
                     ts.createVariableDeclaration(
-                      specifier.propertyName || specifier.name,
+                      specifier.name,
                       undefined,
-                      ts.createPropertyAccess(temp, specifier.name))
+                      ts.createPropertyAccess(temp, specifier.propertyName || specifier.name))
                   ]));
               modifiedSet.push(specifier.name.text);
             }
