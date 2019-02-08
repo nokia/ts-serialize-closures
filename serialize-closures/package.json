@@ -1,6 +1,6 @@
 {
   "name": "@xstream/serialize-closures",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "description": "Serializes closures processed by the ts-closure-transform package.",
   "main": "dist/index.js",
   "typings": "dist/index.d.ts",
@@ -12,6 +12,9 @@
     "type": "git",
     "url": "git+https://gitlabe1.ext.net.nokia.com/vandercr/ts-serialize-closures.git"
   },
+  "files": [
+    "dist"
+  ],
   "keywords": [
     "typescript",
     "transform",
