@@ -1,4 +1,4 @@
-import { isPrimitive, isArray, isFunction, isDate, isRegExp } from "util";
+import { types, isFunction, isArray, isPrimitive } from "util";
 import { getNameOfBuiltin, getBuiltinByName, BuiltinList, defaultBuiltins, generateDefaultBuiltins } from "./builtins";
 
 /**
@@ -205,12 +205,12 @@ export class SerializedGraph {
       };
     } else if (isFunction(value)) {
       return this.serializeFunction(value);
-    } else if (isDate(value)) {
+    } else if (types.isDate(value)) {
       return {
         'kind': 'date',
         'value': JSON.stringify(value)
       };
-    } else if (isRegExp(value)) {
+    } else if (types.isRegExp(value)) {
       return {
         'kind': 'regex',
         'value': value.toString()

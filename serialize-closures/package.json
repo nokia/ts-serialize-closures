@@ -6,7 +6,7 @@
   "typings": "dist/index.d.ts",
   "scripts": {
     "test": "mocha --inspect=9228 --compilers ts:ts-node/register",
-    "prepublish": "tsc"
+    "build": "tsc"
   },
   "repository": {
     "type": "git",
@@ -27,13 +27,13 @@
     "@types/chai": "^3.5.2",
     "@types/fs-extra": "^2.1.0",
     "@types/mocha": "^2.2.41",
-    "@types/node": "^7.0.14",
+    "@types/node": "^10.12.23",
     "chai": "^3.5.0",
     "fs-extra": "^3.0.0",
     "glob": "^7.1.1",
     "mocha": "^5.2.0",
     "ts-node": "^3.0.2",
-    "typescript": "^2.9.2"
+    "typescript": "^3.3.3"
   },
   "dependencies": {}
 }
