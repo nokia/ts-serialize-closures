@@ -215,6 +215,11 @@ export class SerializedGraph {
         'kind': 'regex',
         'value': value.toString()
       };
+    } else if (types.isProxy(value)) {
+      return {
+        'kind': 'proxy',
+        'value': value
+      };
     } else {
       return this.serializeObject(value);
     }
@@ -254,6 +259,19 @@ export class SerializedGraph {
       let results = Object.create(this.get(value.prototype));
       this.indexMap.push({ element: results, index: valueIndex });
       this.deserializeProperties(value, results);
+      return results;
+    } else if (value.kind === 'proxy') {
+      // A proxy is serialized outside of the current scope
+      // so deserialize and proxy the result through a function when accessed
+      let evalImpl = this.evalImpl;
+      var fct = SerializedGraph.fromJSON(value.value, this.builtins, evalImpl).root
+      var results = new Proxy({}, {
+        get: function (tgt, name, rcvr) {
+          let res = fct();
+          return () => res;
+        }
+      });
+      this.indexMap.push({ element: results, index: valueIndex });
       return results;
     } else if (value.kind === 'function') {
       // Decoding functions is tricky because the closure of
