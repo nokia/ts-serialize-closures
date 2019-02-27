@@ -1,5 +1,6 @@
-import { types, isFunction, isArray, isPrimitive } from "util";
+import { types, isFunction, isArray, isPrimitive, isDate, isRegExp } from "util";
 import { getNameOfBuiltin, getBuiltinByName, BuiltinList, defaultBuiltins, generateDefaultBuiltins } from "./builtins";
+import { retrieveCustomSerializer, CustomSerializerList, defaultCustoms, retrieveCustomDeserializer, CustomDeserializerList } from "./customs";
 
 /**
  * Represents a graph of serialized values.
@@ -9,6 +10,8 @@ export class SerializedGraph {
   private rootIndex: number;
   private contentArray: any[];
   private builtins: BuiltinList;
+  private customSerializers: CustomSerializerList;
+  private customDeserializers: CustomDeserializerList;
   private evalImpl: undefined | ((code: string) => any);
 
   /**
@@ -19,6 +22,8 @@ export class SerializedGraph {
     this.rootIndex = -1;
     this.contentArray = [];
     this.builtins = defaultBuiltins;
+    this.customSerializers = [];
+    this.customDeserializers = [];
     this.evalImpl = undefined;
   }
 
@@ -27,13 +32,16 @@ export class SerializedGraph {
    * @param value The value to serialize.
    * @param builtins An optional list of builtins to use.
    * If not specified, the default builtins are used.
+   * @param customSerializers An optional list of custom serialize functions to use for specified values.
    */
   static serialize(
     value: any,
-    builtins?: BuiltinList): SerializedGraph {
+    builtins?: BuiltinList,
+    customSerializers?: CustomSerializerList): SerializedGraph {
 
     let graph = new SerializedGraph();
     graph.builtins = builtins;
+    graph.customSerializers = customSerializers;
     graph.rootIndex = graph.add(value);
     return graph;
   }
@@ -43,12 +51,15 @@ export class SerializedGraph {
    * @param json The JSON to interpret as a serialized graph.
    * @param builtins An optional list of builtins to use.
    * If not specified, the default builtins are used.
+   * @param customDeserializers An optional list of builtins to use.
+   * If not specified, the default builtins are used.
    * @param evalImpl An `eval` implementation to use for
    * evaluating functions or regular expressions.
    */
   static fromJSON(
     json: any,
     builtins?: BuiltinList,
+    customDeserializers?: CustomDeserializerList,
     evalImpl?: (code: string) => any): SerializedGraph {
 
     let graph = new SerializedGraph();
@@ -60,6 +71,11 @@ export class SerializedGraph {
       graph.builtins = generateDefaultBuiltins(undefined, evalImpl);
     }
     graph.evalImpl = evalImpl;
+    if (customDeserializers) {
+      graph.customDeserializers = customDeserializers;
+    } else {
+      graph.customDeserializers = [];
+    }
     return graph;
   }
 
@@ -183,6 +199,15 @@ export class SerializedGraph {
    * @param value The value to serialize.
    */
   private serialize(value: any): any {
+    // Check if the value requires a custom serializer
+    let customSerializer = retrieveCustomSerializer(value, this.customSerializers)
+    if (customSerializer !== undefined) {
+      return {
+        'kind': 'custom',
+        'name': customSerializer.name,
+        'value': customSerializer.serializer()
+      };
+    }
     // Check if the value is a builtin before proceeding.
     let builtinName = getNameOfBuiltin(value, this.builtins);
     if (builtinName !== undefined) {
@@ -270,7 +295,7 @@ export class SerializedGraph {
           value.value.root === 0 &&
           Array.isArray(value.value.data)) {
         let evalImpl = this.evalImpl;
-        let fct = SerializedGraph.fromJSON(value.value, this.builtins, evalImpl).root
+        let fct = SerializedGraph.fromJSON(value.value, this.builtins, [], evalImpl).root
         results = new Proxy({}, {
           get: function (tgt, name, rcvr) {
             let res = fct();
@@ -319,6 +344,14 @@ export class SerializedGraph {
         this.indexMap.push({ element: builtin, index: valueIndex });
         return builtin;
       }
+    } else if (value.kind === 'custom') {
+      let customDeserializer = retrieveCustomDeserializer(value.name, this.customDeserializers);
+      if (customDeserializer === undefined) {
+        throw new Error(`Cannot deserialize unknown custom '${value.name}'.`);
+      }
+      let result = customDeserializer(value.value)
+      this.indexMap.push({ element: result, index: valueIndex });
+      return result;
     } else if (value.kind === 'date') {
       let result = new Date(JSON.parse(value.value));
       this.indexMap.push({ element: result, index: valueIndex });

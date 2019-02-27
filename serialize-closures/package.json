@@ -1,9 +1,9 @@
 {
   "name": "@xstream/serialize-closures",
-  "version": "0.1.5",
+  "version": "0.2.0",
   "description": "Serializes closures processed by the ts-closure-transform package.",
-  "main": "dist/index.js",
-  "typings": "dist/index.d.ts",
+  "main": "dist/src/index.js",
+  "typings": "dist/src/index.d.ts",
   "scripts": {
     "test": "mocha --inspect=9228 --compilers ts:ts-node/register",
     "build": "tsc"
@@ -13,7 +13,7 @@
     "url": "git+https://gitlabe1.ext.net.nokia.com/vandercr/ts-serialize-closures.git"
   },
   "files": [
-    "dist"
+    "dist/src"
   ],
   "keywords": [
     "typescript",

@@ -1,5 +1,6 @@
 import { SerializedGraph } from "./serializedGraph";
 import { BuiltinList } from "./builtins";
+import { CustomDeserializerList} from "./customs";
 
 /**
  * Deserializes a serialized value.
@@ -11,7 +12,8 @@ import { BuiltinList } from "./builtins";
 export default function deserialize(
   value: any,
   builtins?: BuiltinList,
-  evalImpl?: (code: string) => any): any {
+  customs?: CustomDeserializerList,
+  evalImpl?: (code: string) => any) : any {
 
-  return SerializedGraph.fromJSON(value, builtins, evalImpl).root;
+  return SerializedGraph.fromJSON(value, builtins, customs, evalImpl).root;
 }

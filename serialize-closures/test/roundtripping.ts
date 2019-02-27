@@ -1,10 +1,11 @@
 import { expect } from 'chai';
 import { deserialize, serialize, BuiltinList, generateDefaultBuiltins } from '../src';
 import * as vm from 'vm';
+import { CustomSerializerList, CustomSerializerRecord, CustomDeserializerRecord, CustomDeserializerList } from '../src/customs';
 
 describe('Roundtripping', () => {
-  function roundtrip(value, builtins?: BuiltinList) {
-    return deserialize(JSON.parse(JSON.stringify(serialize(value, builtins))), builtins);
+  function roundtrip(value, builtins?: BuiltinList, customSerializers?: CustomSerializerList, customDeserializers?: CustomDeserializerList) {
+    return deserialize(JSON.parse(JSON.stringify(serialize(value, builtins, customSerializers))), builtins, customDeserializers);
   }
   
   function expectRoundtrip(value, builtins?: BuiltinList) {
@@ -131,7 +132,7 @@ describe('Roundtripping', () => {
     let context = vm.createContext({ generateDefaultBuiltins });
     let evalImpl = code => vm.runInContext(code, context);
     let builtins = evalImpl('generateDefaultBuiltins()');
-    let deserializedBox = deserialize(serialized, builtins, evalImpl)();
+    let deserializedBox = deserialize(serialized, builtins, [], evalImpl)();
     expect(deserializedBox).to.deep.equal(createBox());
     // Prototypes should be different because they originate
     // from different environments.
@@ -139,5 +140,31 @@ describe('Roundtripping', () => {
       .to.not.equal(Object.getPrototypeOf(createBox()));
     expect(Object.getPrototypeOf(deserializedBox))
       .to.equal(evalImpl("Object.prototype"));
+  });
+
+  it("can round-trip custom serializer", () => {
+    // This test serializes an object using a custom serializer.
+    // The goal is to deserialize the object using a mapping to the custom deserializer.
+    let myValue = { value: "Oh hi Mark!" };
+    let serializer : CustomSerializerRecord = {
+      name: "mark-serializer",
+      value: myValue,
+      serializer: () => {
+        return "My-JSON: "+JSON.stringify(myValue)
+      }
+    }
+    let deserializer : CustomDeserializerRecord = {
+      name: "mark-serializer",
+      deserializer: (str: string) => {
+        let stripped = str.substring("My-JSON: ".length)
+        return JSON.parse(stripped)
+      }
+    }
+    expect(
+      JSON.stringify(roundtrip(
+        myValue,
+        [],
+        [serializer], [deserializer])))
+      .to.equal(JSON.stringify(myValue));
   });
 });
