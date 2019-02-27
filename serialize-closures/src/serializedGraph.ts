@@ -230,17 +230,21 @@ export class SerializedGraph {
       };
     } else if (isFunction(value)) {
       return this.serializeFunction(value);
-    } else if (types.isDate(value)) {
+    } else if (
+      (types && types.isDate(value)) || // Node v10+
+      (!types && isDate(value))) {      // Deprecated
       return {
         'kind': 'date',
         'value': JSON.stringify(value)
       };
-    } else if (types.isRegExp(value)) {
+    } else if (
+      (types && types.isRegExp(value)) || // Node v10+
+      (!types && isRegExp(value))) {      // Deprecated
       return {
         'kind': 'regex',
         'value': value.toString()
       };
-    } else if (types.isProxy(value)) {
+    } else if (types && types.isProxy(value)) {
       return {
         'kind': 'proxy',
         'value': value
@@ -290,10 +294,10 @@ export class SerializedGraph {
       // so deserialize and proxy the result through a function when accessed
       let results = value.value;
       if (value.value &&
-          typeof value.value === 'object' &&
-          value.value.constructor === Object &&
-          value.value.root === 0 &&
-          Array.isArray(value.value.data)) {
+        typeof value.value === 'object' &&
+        value.value.constructor === Object &&
+        value.value.root === 0 &&
+        Array.isArray(value.value.data)) {
         let evalImpl = this.evalImpl;
         let fct = SerializedGraph.fromJSON(value.value, this.builtins, [], evalImpl).root
         results = new Proxy({}, {
@@ -311,7 +315,7 @@ export class SerializedGraph {
       // time, function implementations are immutable.
       // To get around that, we'll use a dirty little hack: create
       // a thunk that calls a property of itself.
-      let thunk = function() {
+      let thunk = function () {
         return (<any>thunk).__impl.apply(this, arguments);
       }
       this.indexMap.push({ element: thunk, index: valueIndex });
