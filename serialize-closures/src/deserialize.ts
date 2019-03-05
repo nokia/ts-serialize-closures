@@ -7,6 +7,7 @@ import { CustomDeserializerList} from "./customs";
  * @param value The serialized value to deserialize.
  * @param builtins An optional list of builtins to use.
  * If not specified, the default builtins are assumed.
+ * @param customs An optional list of custom serializers to use.
  * @param evalImpl An optional `eval` implementation to use.
  */
 export default function deserialize(
