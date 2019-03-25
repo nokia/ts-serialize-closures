@@ -211,6 +211,27 @@ export abstract class VariableVisitor {
   }
 
   /**
+   * Visits a statement node. If the statement expands into more than
+   * one statement or no statements at all, then the result is wrapped
+   * in a block.
+   * @param node The statement node to visit.
+   */
+  protected visitStatement(node: ts.Statement): ts.Statement {
+    let result = this.visit(node);
+    if (result === undefined) {
+      return ts.createBlock([]);
+    } else if (Array.isArray(result)) {
+      if (result.length == 1) {
+        return <ts.Statement>result[0];
+      } else {
+        return ts.createBlock(<ts.Statement[]>result);
+      }
+    } else {
+      return <ts.Statement>result;
+    }
+  }
+
+  /**
    * Visits a particular node.
    * @param node The node to visit.
    */
@@ -258,6 +279,8 @@ export abstract class VariableVisitor {
     // Statements
     else if (ts.isVariableStatement(node)) {
       return this.visitVariableStatement(node);
+    } else if (ts.isForStatement(node)) {
+      return this.visitForStatement(node);
     }
     // Things that introduce scopes.
     else if (ts.isArrowFunction(node)) {
@@ -667,6 +690,67 @@ export abstract class VariableVisitor {
     flushDeclarations();
 
     return statements;
+  }
+
+  /**
+   * Visits a 'for' statement.
+   * @param statement The statement to visit.
+   */
+  private visitForStatement(statement: ts.ForStatement): ts.VisitResult<ts.Statement> {
+    // Rewriting variables in 'for' statements is actually pretty hard
+    // because definitions, uses and assignments may be rewritten in
+    // such a way that a 'for' statement is no longer applicable.
+    //
+    // For example, consider this 'for' loop:
+    //
+    //     for (let i = f(); i < 10; i++) {
+    //         g();
+    //     }
+    //
+    // If `var i = f()` is rewritten as anything other than a single
+    // variable declaration list, then the logic we want to set up
+    // can no longer be expressed as a simple 'for' loop. Fortunately,
+    // we can factor out the initialization part:
+    //
+    //     {
+    //         let i = f();
+    //         for (; i < 10; i++) {
+    //             g();
+    //         }
+    //     }
+    //
+
+    // 'for' statements introduce a new scope, so let's handle that right away.
+    let oldScope = this.scope;
+    this.scope = new VariableNumberingScope(false, oldScope);
+    let result;
+    if (statement.initializer && ts.isVariableDeclarationList(statement.initializer)) {
+      // If the 'for' has a variable declaration list as an initializer, then turn
+      // the initializer into a variable declaration statement.
+      let initializer = this.visitStatement(ts.createVariableStatement([], statement.initializer));
+
+      // Also visit the condition, incrementor and body.
+      let condition = this.visitExpression(statement.condition);
+      let incrementor = this.visitExpression(statement.incrementor);
+      let body = this.visitStatement(statement.statement);
+
+      if (ts.isVariableStatement(initializer)) {
+        // If the initializer has been rewritten as a variable declaration, then
+        // we can create a simple 'for' loop.
+        result = ts.updateFor(statement, initializer.declarationList, condition, incrementor, body);
+      } else {
+        // Otherwise, we'll factor out the initializer.
+        result = ts.createBlock([
+          initializer,
+          ts.updateFor(statement, undefined, condition, incrementor, body)
+        ]);
+      }
+    } else {
+      result = this.visitChildren(statement);
+    }
+    // Restore the enclosing scope and return.
+    this.scope = oldScope;
+    return result;
   }
 
   /**
