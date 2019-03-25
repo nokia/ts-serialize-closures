@@ -40,7 +40,8 @@ export const CJS_CONFIG = {
 export default function compile(
   input: string,
   options: ts.CompilerOptions = CJS_CONFIG,
-  writeFile?: ts.WriteFileCallback) {
+  writeFile?: ts.WriteFileCallback,
+  printDiagnostics: boolean = true) {
 
   const files = globSync(input);
 
@@ -58,12 +59,15 @@ export default function compile(
     ]
   });
 
-  let allDiagnostics = ts.getPreEmitDiagnostics(program).concat(emitResult.diagnostics);
+  if (printDiagnostics) {
+    let allDiagnostics = ts.getPreEmitDiagnostics(program).concat(emitResult.diagnostics);
 
-  allDiagnostics.forEach(diagnostic => {
-    let { line, character } = diagnostic.file.getLineAndCharacterOfPosition(diagnostic.start);
-    let message = ts.flattenDiagnosticMessageText(diagnostic.messageText, '\n');
-    console.log(`${diagnostic.file.fileName} (${line + 1},${character + 1}): ${message}`);
-  });
+    allDiagnostics.forEach(diagnostic => {
+      let { line, character } = diagnostic.file.getLineAndCharacterOfPosition(diagnostic.start);
+      let message = ts.flattenDiagnosticMessageText(diagnostic.messageText, '\n');
+      console.log(`${diagnostic.file.fileName} (${line + 1},${character + 1}): ${message}`);
+    });
+  }
+
   return msgs;
 }
