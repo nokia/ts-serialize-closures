@@ -386,29 +386,7 @@ export abstract class VariableVisitor {
         body);
 
     } else if (ts.isFunctionDeclaration(node)) {
-
-      let oldScope = this.scope;
-      this.scope = new VariableNumberingScope(true, oldScope);
-
-      this.defineVariables(node.name);
-
-      for (let param of node.parameters) {
-        this.defineVariables(param.name);
-      }
-
-      let body = this.visitBlock(node.body);
-
-      this.scope = oldScope;
-      return ts.updateFunctionDeclaration(
-        node,
-        node.decorators,
-        node.modifiers,
-        node.asteriskToken,
-        node.name,
-        node.typeParameters,
-        node.parameters,
-        node.type,
-        body);
+      return this.visitFunctionDeclaration(node);
 
     } else {
       let oldScope = this.scope;
@@ -562,7 +540,7 @@ export abstract class VariableVisitor {
   }
 
   /**
-   * Defines all variable in a binding name.
+   * Defines all variables in a binding name.
    * @param name A binding name.
    */
   private defineVariables(name: ts.BindingName) {
@@ -803,6 +781,68 @@ export abstract class VariableVisitor {
     // Restore the enclosing scope and return.
     this.scope = oldScope;
     return result;
+  }
+
+  /**
+   * Visits a function declaration node.
+   * @param node The function declaration node to visit.
+   */
+  private visitFunctionDeclaration(node: ts.FunctionDeclaration): ts.VisitResult<ts.Statement> {
+    // We need to be careful here because function declarations
+    // are actually variable definitions and assignments. If
+    // the variable visitor decides to rewrite a function
+    // declaration, then we need to rewrite it as an expression.
+    let defInitializer: ts.Expression = undefined;
+    let rewriteAssignment: ((assignment: ts.BinaryExpression) => ts.Expression) = undefined;
+    if (node.name) {
+      this.defineVariables(node.name);
+      let id = this.scope.getId(node.name);
+      defInitializer = this.visitDef(node.name, id);
+      rewriteAssignment = this.visitAssignment(node.name, id);
+    }
+
+    let oldScope = this.scope;
+    this.scope = new VariableNumberingScope(true, oldScope);
+
+    for (let param of node.parameters) {
+      this.defineVariables(param.name);
+    }
+
+    let body = this.visitBlock(node.body);
+
+    this.scope = oldScope;
+
+    if (defInitializer || rewriteAssignment) {
+      let funExpr = ts.createFunctionExpression(
+        node.modifiers,
+        node.asteriskToken,
+        undefined,
+        node.typeParameters,
+        node.parameters,
+        node.type,
+        body);
+
+      let funAssignment = ts.createAssignment(node.name, funExpr);
+
+      return [
+        ts.createVariableStatement(
+          [],
+          [ts.createVariableDeclaration(node.name, undefined, defInitializer)]),
+        ts.createStatement(rewriteAssignment ? rewriteAssignment(funAssignment) : funAssignment)
+      ];
+
+    } else {
+      return ts.updateFunctionDeclaration(
+        node,
+        node.decorators,
+        node.modifiers,
+        node.asteriskToken,
+        node.name,
+        node.typeParameters,
+        node.parameters,
+        node.type,
+        body);
+    }
   }
 
   /**
