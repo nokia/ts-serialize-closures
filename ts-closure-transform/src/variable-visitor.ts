@@ -133,6 +133,28 @@ export class VariableNumberingScope {
   }
 
   /**
+   * Defines in this scope all variables specified by a binding name.
+   * @param name A binding name that lists variables to define.
+   */
+  defineVariables(name: ts.BindingName) {
+    if (name === undefined) {
+
+    } else if (ts.isIdentifier(name)) {
+      this.define(name);
+    } else if (ts.isArrayBindingPattern(name)) {
+      for (let elem of name.elements) {
+        if (ts.isBindingElement(elem)) {
+          this.defineVariables(elem.name);
+        }
+      }
+    } else {
+      for (let elem of name.elements) {
+        this.defineVariables(elem.name);
+      }
+    }
+  }
+
+  /**
    * Gets the identifier for a variable with a
    * particular name in the current scope.
    * @param name The name of the variable.
@@ -542,23 +564,12 @@ export abstract class VariableVisitor {
   /**
    * Defines all variables in a binding name.
    * @param name A binding name.
+   * @param scope The scope to define the variables in.
    */
   private defineVariables(name: ts.BindingName) {
-    if (name === undefined) {
-
-    } else if (ts.isIdentifier(name)) {
-      this.scope.define(name);
-    } else if (ts.isArrayBindingPattern(name)) {
-      for (let elem of name.elements) {
-        if (ts.isBindingElement(elem)) {
-          this.defineVariables(elem.name);
-        }
-      }
-    } else {
-      for (let elem of name.elements) {
-        this.defineVariables(elem.name);
-      }
-    }
+    // This is a little off for 'let' bindings, but we'll just
+    // assume that those have all been lowered to 'var' already.
+    this.scope.functionScope.defineVariables(name);
   }
 
   /**
