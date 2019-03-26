@@ -33,10 +33,10 @@ import { VariableVisitor, VariableId, VariableNumberingScope, VariableNumberingS
 /**
  * A variable visitor that tracks down mutable shared variables.
  */
-class MutableSharedVariableFinder extends VariableVisitor {
+export class MutableSharedVariableFinder extends VariableVisitor {
   private readonly updateCounts: { [id: number]: number };
   private readonly defScopes: { [id: number]: VariableNumberingScope };
-  private readonly sharedVariables: VariableId[];
+  private readonly sharedVars: VariableId[];
 
   /**
    * Creates a mutable shared variable finder.
@@ -46,7 +46,14 @@ class MutableSharedVariableFinder extends VariableVisitor {
     super(ctx);
     this.updateCounts = {};
     this.defScopes = {};
-    this.sharedVariables = [];
+    this.sharedVars = [];
+  }
+
+  /**
+   * Gets a list of all shared variables detected by this variable visitor.
+   */
+  get sharedVariables(): ReadonlyArray<VariableId> {
+    return this.sharedVars;
   }
 
   /**
@@ -54,7 +61,7 @@ class MutableSharedVariableFinder extends VariableVisitor {
    */
   get mutableSharedVariables(): ReadonlyArray<VariableId> {
     let results = [];
-    for (let id of this.sharedVariables) {
+    for (let id of this.sharedVars) {
       if (this.updateCounts[id] > 1) {
         results.push(id);
       }
@@ -88,8 +95,8 @@ class MutableSharedVariableFinder extends VariableVisitor {
 
   private noteAppearance(id: VariableId) {
     if (id in this.defScopes && this.defScopes[id] !== this.scope.functionScope) {
-      if (this.sharedVariables.indexOf(id) < 0) {
-        this.sharedVariables.push(id);
+      if (this.sharedVars.indexOf(id) < 0) {
+        this.sharedVars.push(id);
       }
     }
   }
