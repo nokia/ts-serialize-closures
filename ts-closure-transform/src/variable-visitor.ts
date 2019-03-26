@@ -58,8 +58,23 @@ export class VariableNumberingStore {
  * A scope data structure that assigns a unique id to each variable.
  */
 export class VariableNumberingScope {
+  /**
+   * All local variables defined in this scope.
+   */
   private readonly localVariables: { [name: string]: VariableId };
+
+  /**
+   * This scope's parent scope.
+   */
   private readonly parent: VariableNumberingScope | undefined;
+
+  /**
+   * A set of variable IDs that have not been explicitly defined
+   * in a variable numbering scope yet. This set is shared by
+   * all variable numbering scopes and can be indexed by variable
+   * names.
+   */
+  private readonly pendingVariables: { [name: string]: VariableId };
 
   /**
    * The variable numbering store for this scope.
@@ -81,12 +96,15 @@ export class VariableNumberingScope {
     this.localVariables = {};
     if (!parentOrStore) {
       this.parent = undefined;
+      this.pendingVariables = {};
       this.store = new VariableNumberingStore();
     } else if (parentOrStore instanceof VariableNumberingScope) {
       this.parent = parentOrStore;
+      this.pendingVariables = parentOrStore.pendingVariables;
       this.store = parentOrStore.store;
     } else {
       this.parent = undefined;
+      this.pendingVariables = {};
       this.store = parentOrStore;
     }
   }
@@ -97,7 +115,17 @@ export class VariableNumberingScope {
    * @param name The name of the variable to define.
    */
   define(name: ts.Identifier): VariableId {
-    let newId = this.store.getOrCreateId(name);
+    // If the variable is pending, then we want to reuse
+    // the pending ID.
+    let newId: VariableId;
+    if (name.text in this.pendingVariables) {
+      newId = this.pendingVariables[name.text];
+      delete this.pendingVariables[name.text];
+      this.store.setId(name, newId);
+    } else {
+      newId = this.store.getOrCreateId(name);
+    }
+
     if (name.text !== "") {
       this.localVariables[name.text] = newId;
     }
@@ -118,13 +146,21 @@ export class VariableNumberingScope {
       let id = this.localVariables[text];
       this.store.setId(name, id);
       return id;
+    } else if (text in this.pendingVariables) {
+      // If the name is defined in the pending variables,
+      // then we'll essentially do the same thing.
+      let id = this.pendingVariables[text];
+      this.store.setId(name, id);
+      return id;
     } else if (this.parent) {
       // If the scope has a parent and the name is not defined
       // as a local variable, then defer to the parent.
       return this.parent.getId(name);
     } else {
-      // Otherwise, "define" the name as a global.
-      return this.define(name);
+      // Otherwise, add the name to the pending list.
+      let id = this.store.getOrCreateId(name);
+      this.pendingVariables[name.text] = id;
+      return id;
     }
   }
 

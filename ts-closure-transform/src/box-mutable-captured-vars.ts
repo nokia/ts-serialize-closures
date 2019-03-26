@@ -34,8 +34,27 @@ import { VariableVisitor, VariableId, VariableNumberingScope, VariableNumberingS
  * A variable visitor that tracks down mutable shared variables.
  */
 export class MutableSharedVariableFinder extends VariableVisitor {
+  /**
+   * A mapping of variable IDs to the number of times those variables
+   * are updated.
+   */
   private readonly updateCounts: { [id: number]: number };
+
+  /**
+   * A mapping of variable IDs to the scopes that define those IDs.
+   */
   private readonly defScopes: { [id: number]: VariableNumberingScope };
+
+  /**
+   * A mapping of variable IDs to the scopes wherein they are used.
+   * This mapping only contains IDs for variables that are still pending,
+   * i.e., they have not been assigned a definition scope yet.
+   */
+  private readonly pendingAppearanceScopes: { [id: number]: VariableNumberingScope[] };
+
+  /**
+   * A list of all shared variable IDs.
+   */
   private readonly sharedVars: VariableId[];
 
   /**
@@ -46,6 +65,7 @@ export class MutableSharedVariableFinder extends VariableVisitor {
     super(ctx);
     this.updateCounts = {};
     this.defScopes = {};
+    this.pendingAppearanceScopes = {};
     this.sharedVars = [];
   }
 
@@ -77,6 +97,15 @@ export class MutableSharedVariableFinder extends VariableVisitor {
   
   protected visitDef(node: ts.Identifier, id: VariableId): ts.Expression {
     this.defScopes[id] = this.scope.functionScope;
+
+    if (id in this.pendingAppearanceScopes) {
+      // Handle pending appearances.
+      for (let scope of this.pendingAppearanceScopes[id]) {
+        this.noteAppearanceIn(id, scope);
+      }
+      delete this.pendingAppearanceScopes[id];
+    }
+
     return undefined;
   }
 
@@ -94,7 +123,18 @@ export class MutableSharedVariableFinder extends VariableVisitor {
   }
 
   private noteAppearance(id: VariableId) {
-    if (id in this.defScopes && this.defScopes[id] !== this.scope.functionScope) {
+    if (id in this.defScopes) {
+      this.noteAppearanceIn(id, this.scope);
+    } else {
+      if (!(id in this.pendingAppearanceScopes)) {
+        this.pendingAppearanceScopes[id] = [];
+      }
+      this.pendingAppearanceScopes[id].push(this.scope.functionScope);
+    }
+  }
+
+  private noteAppearanceIn(id: VariableId, scope: VariableNumberingScope) {
+    if (this.defScopes[id] !== scope.functionScope) {
       if (this.sharedVars.indexOf(id) < 0) {
         this.sharedVars.push(id);
       }
