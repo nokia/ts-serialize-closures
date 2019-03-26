@@ -242,13 +242,29 @@ export abstract class VariableVisitor {
     }
     // Expressions
     else if (ts.isIdentifier(node)) {
-      return this.visitUse(node, this.scope.getId(node));
+      if (node.text !== "undefined"
+        && node.text !== "null"
+        && node.text !== "arguments") {
+        return this.visitUse(node, this.scope.getId(node));
+      } else {
+        return node;
+      }
+
+    } else if (ts.isTypeNode(node)) {
+      // Don't visit type nodes.
+      return node;
 
     } else if (ts.isPropertyAccessExpression(node)) {
       return ts.updatePropertyAccess(
         node,
         this.visitExpression(node.expression),
         node.name);
+
+    } else if (ts.isQualifiedName(node)) {
+      return ts.updateQualifiedName(
+        node,
+        <ts.EntityName>this.visit(node.left),
+        node.right);
 
     } else if (ts.isPropertyAssignment(node)) {
       return ts.updatePropertyAssignment(
