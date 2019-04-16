@@ -159,9 +159,13 @@ export function expandBuiltins(roots: BuiltinList): BuiltinList {
         if (propName === 'callee' || propName === 'caller' || propName === 'arguments') {
           continue;
         } else {
-          let desc = Object.getOwnPropertyDescriptor(record.builtin, propName);
-          if (desc.value) {
-            addToWorklist(record.name, propName, desc.value);
+          try {
+            let desc = Object.getOwnPropertyDescriptor(record.builtin, propName);
+            if (desc.value) {
+              addToWorklist(record.name, propName, desc.value);
+            }
+          } catch (e) {
+            // Ignore inaccessible methods in Node <10, e.g. TypeError: Method bytesRead called on incompatible receiver #<Pipe>
           }
         }
       }
