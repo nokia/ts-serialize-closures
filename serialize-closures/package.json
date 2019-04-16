@@ -1,6 +1,6 @@
 {
   "name": "@xstream/serialize-closures",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "Serializes closures processed by the ts-closure-transform package.",
   "main": "dist/src/index.js",
   "typings": "dist/src/index.d.ts",
