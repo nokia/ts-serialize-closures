@@ -355,6 +355,8 @@ export abstract class VariableVisitor {
       return this.visitVariableStatement(node);
     } else if (ts.isForStatement(node)) {
       return this.visitForStatement(node);
+    } else if (ts.isTryStatement(node)) {
+      return this.visitTryStatement(node);
     }
     // Things that introduce scopes.
     else if (ts.isArrowFunction(node)) {
@@ -797,6 +799,34 @@ export abstract class VariableVisitor {
     // Restore the enclosing scope and return.
     this.scope = oldScope;
     return result;
+  }
+
+  /**
+   * Visits a 'try' statement.
+   * @param statement The statement to visit.
+   */
+  private visitTryStatement(statement: ts.TryStatement): ts.VisitResult<ts.Statement> {
+    let tryBlock = this.visitBlock(statement.tryBlock);
+    let catchClause;
+    if (statement.catchClause) {
+      // Catch clauses may introduce a new, locally-scoped variable.
+      let oldScope = this.scope;
+      this.scope = new VariableNumberingScope(false, oldScope);
+      if (statement.catchClause.variableDeclaration) {
+        this.defineVariables(statement.catchClause.variableDeclaration.name);
+      }
+      catchClause = ts.updateCatchClause(
+        statement.catchClause,
+        statement.catchClause.variableDeclaration,
+        this.visitBlock(statement.catchClause.block));
+      this.scope = oldScope;
+    } else {
+      catchClause = statement.catchClause;
+    }
+    let finallyBlock = statement.finallyBlock
+      ? this.visitBlock(statement.finallyBlock)
+      : statement.finallyBlock;
+    return ts.updateTry(statement, tryBlock, catchClause, finallyBlock);
   }
 
   /**
