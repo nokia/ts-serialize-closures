@@ -64,17 +64,17 @@ export class VariableNumberingScope {
   private readonly localVariables: { [name: string]: VariableId };
 
   /**
-   * This scope's parent scope.
-   */
-  private readonly parent: VariableNumberingScope | undefined;
-
-  /**
    * A set of variable IDs that have not been explicitly defined
    * in a variable numbering scope yet. This set is shared by
    * all variable numbering scopes and can be indexed by variable
    * names.
    */
   private readonly pendingVariables: { [name: string]: VariableId };
+
+  /**
+   * This scope's parent scope.
+   */
+  readonly parent: VariableNumberingScope | undefined;
 
   /**
    * The variable numbering store for this scope.
@@ -535,7 +535,7 @@ export abstract class VariableVisitor {
                 expression.operand,
                 value)));
         } else {
-          let temp = this.createTempVariable();
+          let temp = this.createTemporary();
           this.ctx.hoistVariableDeclaration(temp);
 
           let firstUse = this.visitUse(expression.operand, id);
@@ -618,7 +618,7 @@ export abstract class VariableVisitor {
         let init = this.visitDef(name, id);
         let rewrite = this.visitAssignment(name, id);
         if (rewrite) {
-          let temp = this.createTempVariable();
+          let temp = this.createTemporary();
           fixups.push(
             ts.createVariableStatement(
               [],
@@ -859,7 +859,7 @@ export abstract class VariableVisitor {
   /**
    * Creates a temporary variable name.
    */
-  private createTempVariable(): ts.Identifier {
+  protected createTemporary(): ts.Identifier {
     let result = ts.createTempVariable(undefined);
     this.scope.define(result);
     return result;
