@@ -1,0 +1,39 @@
+{
+  "name": "@xstream/transform-benchmarker",
+  "version": "0.1.1",
+  "description": "A benchmarking utility that runs the Octane benchmarks with the closure transform enabled.",
+  "main": "dist/index.js",
+  "typings": "dist/index.d.ts",
+  "scripts": {
+    "prepublish": "tsc",
+    "benchmark": "tsc && node dist/transform-benchmarker/src/index.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://gitlabe1.ext.net.nokia.com/vandercr/ts-serialize-closures.git"
+  },
+  "keywords": [
+    "typescript",
+    "transform",
+    "modules"
+  ],
+  "author": "Jonathan Van der Cruysse",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://gitlabe1.ext.net.nokia.com/vandercr/ts-serialize-closures/issues"
+  },
+  "files": [
+    "dist"
+  ],
+  "homepage": "https://gitlabe1.ext.net.nokia.com/vandercr/ts-serialize-closures#readme",
+  "devDependencies": {
+    "@types/node": "^12.0.2",
+    "benchmark-octane": "^1.0.0",
+    "fs-extra": "^3.0.0",
+    "glob": "^7.1.1",
+    "things-js": "^2.0.0",
+    "ts-node": "^3.0.2",
+    "typescript": "^2.7.0-rc"
+  },
+  "dependencies": {}
+}
