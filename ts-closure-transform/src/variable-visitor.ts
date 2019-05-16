@@ -358,22 +358,7 @@ export abstract class VariableVisitor {
     }
     // Things that introduce scopes.
     else if (ts.isArrowFunction(node)) {
-
-      let oldScope = this.scope;
-      this.scope = new VariableNumberingScope(true, oldScope);
-
-      for (let param of node.parameters) {
-        this.defineVariables(param.name);
-      }
-
-      let body = node.body;
-      if (ts.isBlock(body)) {
-        body = this.visitBlock(body);
-      } else {
-        body = this.visitExpression(body);
-      }
-
-      this.scope = oldScope;
+      let body = this.visitFunctionBody(node.parameters, node.body);
       return ts.updateArrowFunction(
         node,
         node.modifiers,
@@ -384,19 +369,7 @@ export abstract class VariableVisitor {
         body);
 
     } else if (ts.isFunctionExpression(node)) {
-
-      let oldScope = this.scope;
-      this.scope = new VariableNumberingScope(true, oldScope);
-
-      this.defineVariables(node.name);
-
-      for (let param of node.parameters) {
-        this.defineVariables(param.name);
-      }
-
-      let body = this.visitBlock(node.body);
-
-      this.scope = oldScope;
+      let body = this.visitFunctionBody(node.parameters, node.body, node.name);
       return ts.updateFunctionExpression(
         node,
         node.modifiers,
@@ -795,6 +768,39 @@ export abstract class VariableVisitor {
   }
 
   /**
+   * Visits a function body.
+   * @param parameters The function's list of parameters.
+   * @param body The function's body.
+   * @param body The function's name, if any.
+   */
+  private visitFunctionBody(
+    parameters: ts.NodeArray<ts.ParameterDeclaration>,
+    body: ts.Block | ts.Expression,
+    name?: ts.Identifier) {
+
+    let oldScope = this.scope;
+    this.scope = new VariableNumberingScope(true, oldScope);
+
+    if (name !== undefined) {
+      this.defineVariables(name);
+    }
+
+    for (let param of parameters) {
+      this.defineVariables(param.name);
+    }
+
+    let result;
+    if (ts.isBlock(body)) {
+      result = this.visitBlock(body);
+    } else {
+      result = this.visitExpression(body);
+    }
+
+    this.scope = oldScope;
+    return result;
+  }
+
+  /**
    * Visits a function declaration node.
    * @param node The function declaration node to visit.
    */
@@ -812,16 +818,7 @@ export abstract class VariableVisitor {
       rewriteAssignment = this.visitAssignment(node.name, id);
     }
 
-    let oldScope = this.scope;
-    this.scope = new VariableNumberingScope(true, oldScope);
-
-    for (let param of node.parameters) {
-      this.defineVariables(param.name);
-    }
-
-    let body = this.visitBlock(node.body);
-
-    this.scope = oldScope;
+    let body = this.visitFunctionBody(node.parameters, node.body);
 
     if (defInitializer || rewriteAssignment) {
       let funExpr = ts.createFunctionExpression(
