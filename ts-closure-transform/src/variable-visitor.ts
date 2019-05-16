@@ -380,6 +380,38 @@ export abstract class VariableVisitor {
         node.type,
         body);
 
+    } else if (ts.isGetAccessor(node)) {
+      return ts.updateGetAccessor(
+        node,
+        node.decorators,
+        node.modifiers,
+        node.name,
+        node.parameters,
+        node.type,
+        this.visitFunctionBody(node.parameters, node.body));
+
+    } else if (ts.isSetAccessor(node)) {
+      return ts.updateSetAccessor(
+        node,
+        node.decorators,
+        node.modifiers,
+        node.name,
+        node.parameters,
+        this.visitFunctionBody(node.parameters, node.body));
+
+    } else if (ts.isMethodDeclaration(node)) {
+      return ts.updateMethod(
+        node,
+        node.decorators,
+        node.modifiers,
+        node.asteriskToken,
+        node.name,
+        node.questionToken,
+        node.typeParameters,
+        node.parameters,
+        node.type,
+        this.visitFunctionBody(node.parameters, node.body));
+
     } else if (ts.isFunctionDeclaration(node)) {
       return this.visitFunctionDeclaration(node);
 
