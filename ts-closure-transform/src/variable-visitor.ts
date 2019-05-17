@@ -355,6 +355,8 @@ export abstract class VariableVisitor {
       return this.visitVariableStatement(node);
     } else if (ts.isForStatement(node)) {
       return this.visitForStatement(node);
+    } else if (ts.isForInStatement(node) || ts.isForOfStatement(node)) {
+      return this.visitForInOrOfStatement(node);
     } else if (ts.isTryStatement(node)) {
       return this.visitTryStatement(node);
     }
@@ -813,6 +815,7 @@ export abstract class VariableVisitor {
       let oldScope = this.scope;
       this.scope = new VariableNumberingScope(false, oldScope);
       if (statement.catchClause.variableDeclaration) {
+        // FIXME: allow this variable to be rewritten.
         this.defineVariables(statement.catchClause.variableDeclaration.name);
       }
       catchClause = ts.updateCatchClause(
@@ -827,6 +830,34 @@ export abstract class VariableVisitor {
       ? this.visitBlock(statement.finallyBlock)
       : statement.finallyBlock;
     return ts.updateTry(statement, tryBlock, catchClause, finallyBlock);
+  }
+
+  /**
+   * Visits a 'for...in/of' statement.
+   * @param statement The statement to visit.
+   */
+  private visitForInOrOfStatement(statement: ts.ForInOrOfStatement): ts.VisitResult<ts.Statement> {
+    // 'for' statements may introduce a new, locally-scoped variable.
+    let oldScope = this.scope;
+    this.scope = new VariableNumberingScope(false, oldScope);
+    let initializer = statement.initializer;
+    if (ts.isVariableDeclarationList(initializer)) {
+      // FIXME: allow declarations to be rewritten here.
+      for (let element of initializer.declarations) {
+        this.defineVariables(element.name);
+      }
+    } else {
+      initializer = this.visitExpression(initializer);
+    }
+    let expr = this.visitExpression(statement.expression);
+    let body = this.visitStatement(statement.statement);
+    this.scope = oldScope;
+
+    if (ts.isForInStatement(statement)) {
+      return ts.updateForIn(statement, initializer, expr, body);
+    } else {
+      return ts.updateForOf(statement, statement.awaitModifier, initializer, expr, body);
+    }
   }
 
   /**
