@@ -5,6 +5,7 @@
 # related measurements and another representing size-related measurements.
 
 import csv
+import math
 from itertools import islice
 
 
@@ -24,10 +25,10 @@ def aggregate_results(baseline, *others):
        divides all measurements by the baseline on a per-benchmark basis."""
 
     def aggregate_benchmark(key, results):
-        if key in results:
+        if key in results and results[key] != 0.0:
             return results[key] / baseline[key]
         else:
-            return 0.0
+            return float('nan')
 
     results = []
     for key in sorted(baseline.keys()):
@@ -59,7 +60,7 @@ def write_aggregated(destination, aggregated, *names):
     results = {key: 0.0 for key in names}
     count = 0
     for row in aggregated:
-        if 0.0 in row[1:]:
+        if any(filter(math.isnan, row[1:])):
             # This benchmark errored for at least one instrumentation
             # technique. We'll drop it entirely in the interest of fairness.
             continue
@@ -74,7 +75,8 @@ def write_aggregated(destination, aggregated, *names):
 
     return results
 
-print("Score means:")
+
+print('Score means:')
 print(
     write_aggregated(
         'results/scores.csv',
@@ -85,7 +87,7 @@ print(
         'flash-freeze',
         'things-js'))
 
-print("Size means:")
+print('Size means:')
 print(
     write_aggregated(
         'results/sizes.csv',
@@ -95,3 +97,9 @@ print(
         'original',
         'flash-freeze',
         'things-js'))
+
+print('Score coordinates:')
+print(','.join(sorted(read_results('results/original-scores.csv'))))
+
+print('Size coordinates:')
+print(','.join(sorted(read_results('results/original-sizes.csv'))))
