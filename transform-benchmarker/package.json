@@ -6,7 +6,9 @@
   "typings": "dist/index.d.ts",
   "scripts": {
     "prepublish": "tsc",
-    "benchmark": "tsc && node dist/transform-benchmarker/src/index.js"
+    "original": "tsc && node dist/transform-benchmarker/src/index.js original",
+    "flash-freeze": "tsc && node dist/transform-benchmarker/src/index.js flash-freeze",
+    "things-js": "tsc && node dist/transform-benchmarker/src/index.js things-js"
   },
   "repository": {
     "type": "git",

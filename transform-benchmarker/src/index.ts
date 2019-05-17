@@ -98,6 +98,22 @@ function compileTo(inputFile: string, outputFile: string, transformClosures: boo
     onError: (message: string) => void | undefined,
     sourceFiles): void {
 
+    if (fileName.indexOf('gbemu-part1') >= 0) {
+      // The Gameboy benchmark is problematic for FlashFreeze because the Gameboy
+      // benchmark shares mutable variables across files. Our transform assumes
+      // that each file is a separate module, but the Gameboy benchmark breaks
+      // that assumption.
+      //
+      // There's not much that can be done about this at a fundamental level:
+      // FlashFreeze's approach really hinges on the module abstraction that the
+      // Gameboy benchmark doesn't respect.
+      //
+      // As a workaround for this specific case, we can replace all references
+      // to the 'gameboy' object with 'gameboy.value'.
+      data = data
+        .replace(/gameboy\./g, 'gameboy.value.')
+        .replace('gameboy = null;', 'gameboy.value = null;');
+    }
     writeFileSync(outputFile, data, { encoding: 'utf8' });
   }
 
@@ -113,46 +129,44 @@ function compileTo(inputFile: string, outputFile: string, transformClosures: boo
     transformClosures);
 }
 
-let original = instrumentOctane("original", (from, to) => {
-  compileTo(from, to, false);
-});
-
-original();
-
-let flashFreeze = instrumentOctane("flash-freeze", (from, to) => {
-  compileTo(from, to, true);
-});
-
-flashFreeze();
-
-let thingsJS = instrumentOctane("things-js", (from, to) => {
-  if (endsWith(from, 'base.js')) {
-    // Just copy 'base.js'. Instrumenting it will produce a stack overflow
-    // because an instrumented base.js will create ThingsJS stack frames in
-    // its reimplementation of Math.random. ThingsJS stack frame creation
-    // depends on Math.random, hence the stack overflow.
-    copyFileSync(from, to);
-    return;
-  }
-
-  let code: string = require("child_process").spawnSync("things-js", ["inst", from], { encoding: 'utf8' }).stdout;
-  // ThingsJS generates code that calls 'require' at the top of the file but then
-  // demands that 'require' is called as a property of the big sigma global.
-  // This breaks the Octane benchmark, which depends on file inclusion. We will
-  // work around this problem by patching the test runner and the tests.
-  let remove = "require('things-js/lib/core/Code').bootstrap(module, function (Σ) {";
-  if (endsWith(from, 'octane.js')) {
-    let add = "__Σ = (typeof Σ === 'undefined') ? require('things-js/lib/core/Code') : { bootstrap: function(arg1, arg2) { return arg2(Σ); } };\n" +
-      "__Σ.bootstrap(module, function (Σ) { global.Σ = Σ; ";
-    code = add + code.substr(remove.length);
-  } else {
-    let epilogueIndex = code.lastIndexOf("'mqtt://localhost'");
-    let epilogueStartIndex = code.lastIndexOf('\n', epilogueIndex);
-    code = code.substr(0, epilogueStartIndex).substr(remove.length);
-  }
-  writeFileSync(to, code, { encoding: 'utf8' });
-});
-
-thingsJS();
-
-process.exit(0);
+if (process.argv.length <= 2 || process.argv[2] == 'original') {
+  instrumentOctane('original', (from, to) => {
+    compileTo(from, to, false);
+  })();
+} else if (process.argv[2] == 'flash-freeze') {
+  instrumentOctane('flash-freeze', (from, to) => {
+    compileTo(from, to, true);
+  })();
+} else if (process.argv[2] == 'things-js') {
+  instrumentOctane('things-js', (from, to) => {
+    if (endsWith(from, 'base.js')) {
+      // Just copy 'base.js'. Instrumenting it will produce a stack overflow
+      // because an instrumented base.js will create ThingsJS stack frames in
+      // its reimplementation of Math.random. ThingsJS stack frame creation
+      // depends on Math.random, hence the stack overflow.
+      copyFileSync(from, to);
+      return;
+    }
+  
+    let code: string = require("child_process").spawnSync("things-js", ["inst", from], { encoding: 'utf8' }).stdout;
+    // ThingsJS generates code that calls 'require' at the top of the file but then
+    // demands that 'require' is called as a property of the big sigma global.
+    // This breaks the Octane benchmark, which depends on file inclusion. We will
+    // work around this problem by patching the test runner and the tests.
+    let remove = "require('things-js/lib/core/Code').bootstrap(module, function (Σ) {";
+    if (endsWith(from, 'octane.js')) {
+      let add = "__Σ = (typeof Σ === 'undefined') ? require('things-js/lib/core/Code') : { bootstrap: function(arg1, arg2) { return arg2(Σ); } };\n" +
+        "__Σ.bootstrap(module, function (Σ) { global.Σ = Σ; ";
+      code = add + code.substr(remove.length);
+    } else {
+      let epilogueIndex = code.lastIndexOf("'mqtt://localhost'");
+      let epilogueStartIndex = code.lastIndexOf('\n', epilogueIndex);
+      code = code.substr(0, epilogueStartIndex).substr(remove.length);
+    }
+    writeFileSync(to, code, { encoding: 'utf8' });
+  })();
+  process.exit(0);
+} else {
+  console.log(`Unknown configuration '${process.argv[2]}'`);
+  process.exit(1);
+}
