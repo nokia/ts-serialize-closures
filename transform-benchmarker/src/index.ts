@@ -162,8 +162,7 @@ function instrumentWithThingsJS(inputFile: string, outputFile: string) {
   // work around this problem by patching the test runner and the tests.
   let remove = "require('things-js/lib/core/Code').bootstrap(module, function (Σ) {";
   if (endsWith(outputFile, 'octane.js')) {
-    let add = "__Σ = (typeof Σ === 'undefined') ? require('things-js/lib/core/Code') : { bootstrap: function(arg1, arg2) { return arg2(Σ); } };\n" +
-      "__Σ.bootstrap(module, function (Σ) { global.Σ = Σ; ";
+    let add = "require('things-js/lib/core/Code').bootstrap(module, function (Σ) { global.Σ = Σ; ";
     code = add + code.substr(remove.length);
     code = exportBenchmarkSuite(code);
   } else {
