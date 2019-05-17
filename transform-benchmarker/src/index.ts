@@ -40,7 +40,7 @@ function endsWith(value: string, suffix: string) {
 // A flag that allows us to exclude the Mandreel benchmark from the
 // instrumentation pipeline. Doing so is useful for development because
 // Mandreel is a hefty benchmark that takes a long time to process.
-const includeMandreel = false;
+const includeMandreel = true;
 
 /**
  * Creates an instrumented version of the Octane benchmark suite.
@@ -118,7 +118,11 @@ function instrumentOctane(
     for (let fileName of readdirSync(resolve(destRootDir, 'octane'))) {
       let absPath = resolve(destRootDir, 'octane', fileName);
       let f = statSync(absPath);
-      if (!f.isDirectory() && endsWith(fileName, '.js')) {
+      if (!f.isDirectory()
+        && endsWith(fileName, '.js')
+        && !endsWith(fileName, 'base.js')
+        && !endsWith(fileName, 'run.js')) {
+
         sizes.push([
           fileName,
           Buffer.byteLength(readFileSync(absPath))
