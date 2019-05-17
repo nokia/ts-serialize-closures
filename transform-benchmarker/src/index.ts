@@ -90,7 +90,17 @@ function instrumentOctane(
   return require(resolve(destRootDir, 'octane.js')).run;
 }
 
-function compileTo(inputFile: string, outputFile: string, transformClosures: boolean) {
+/**
+ * Patches an instrumented 'octane.js' file to export the BenchmarkSuite object.
+ * @param code The code to patch.
+ */
+function exportBenchmarkSuite(code: string) {
+  return code.replace(
+    'module.exports = {',
+    'module.exports = { BenchmarkSuite: BenchmarkSuite,');
+}
+
+function instrumentWithTsc(inputFile: string, outputFile: string, transformClosures: boolean) {
   function writeFileCallback(
     fileName: string,
     data: string,
@@ -98,7 +108,7 @@ function compileTo(inputFile: string, outputFile: string, transformClosures: boo
     onError: (message: string) => void | undefined,
     sourceFiles): void {
 
-    if (transformClosures && fileName.indexOf('gbemu-part1') >= 0) {
+    if (transformClosures && endsWith(fileName, 'gbemu-part1.js')) {
       // The Gameboy benchmark is problematic for FlashFreeze because the Gameboy
       // benchmark shares mutable variables across files. Our transform assumes
       // that each file is a separate module, but the Gameboy benchmark breaks
@@ -113,6 +123,9 @@ function compileTo(inputFile: string, outputFile: string, transformClosures: boo
       data = data
         .replace(/gameboy\./g, 'gameboy.value.')
         .replace('gameboy = null;', 'gameboy.value = null;');
+    }
+    else if (endsWith(fileName, 'octane.js')) {
+      data = exportBenchmarkSuite(data);
     }
     writeFileSync(outputFile, data, { encoding: 'utf8' });
   }
@@ -129,42 +142,48 @@ function compileTo(inputFile: string, outputFile: string, transformClosures: boo
     transformClosures);
 }
 
+function instrumentWithThingsJS(inputFile: string, outputFile: string) {
+  if (endsWith(inputFile, 'base.js')) {
+    // Just copy 'base.js'. Instrumenting it will produce a stack overflow
+    // because an instrumented base.js will create ThingsJS stack frames in
+    // its reimplementation of Math.random. ThingsJS stack frame creation
+    // depends on Math.random, hence the stack overflow.
+    //
+    // This copy shouldn't affect our measurements: 'base.js' is not an
+    // actual benchmark. It only contains some benchmark setup infrastructure.
+    copyFileSync(inputFile, outputFile);
+    return;
+  }
+
+  let code: string = require("child_process").spawnSync("things-js", ["inst", inputFile], { encoding: 'utf8' }).stdout;
+  // ThingsJS generates code that calls 'require' at the top of the file but then
+  // demands that 'require' is called as a property of the big sigma global.
+  // This breaks the Octane benchmark, which depends on file inclusion. We will
+  // work around this problem by patching the test runner and the tests.
+  let remove = "require('things-js/lib/core/Code').bootstrap(module, function (Σ) {";
+  if (endsWith(outputFile, 'octane.js')) {
+    let add = "__Σ = (typeof Σ === 'undefined') ? require('things-js/lib/core/Code') : { bootstrap: function(arg1, arg2) { return arg2(Σ); } };\n" +
+      "__Σ.bootstrap(module, function (Σ) { global.Σ = Σ; ";
+    code = add + code.substr(remove.length);
+    code = exportBenchmarkSuite(code);
+  } else {
+    let epilogueIndex = code.lastIndexOf("'mqtt://localhost'");
+    let epilogueStartIndex = code.lastIndexOf('\n', epilogueIndex);
+    code = code.substr(0, epilogueStartIndex).substr(remove.length);
+  }
+  writeFileSync(outputFile, code, { encoding: 'utf8' });
+}
+
 if (process.argv.length <= 2 || process.argv[2] == 'original') {
   instrumentOctane('original', (from, to) => {
-    compileTo(from, to, false);
+    instrumentWithTsc(from, to, false);
   })();
 } else if (process.argv[2] == 'flash-freeze') {
   instrumentOctane('flash-freeze', (from, to) => {
-    compileTo(from, to, true);
+    instrumentWithTsc(from, to, true);
   })();
 } else if (process.argv[2] == 'things-js') {
-  instrumentOctane('things-js', (from, to) => {
-    if (endsWith(from, 'base.js')) {
-      // Just copy 'base.js'. Instrumenting it will produce a stack overflow
-      // because an instrumented base.js will create ThingsJS stack frames in
-      // its reimplementation of Math.random. ThingsJS stack frame creation
-      // depends on Math.random, hence the stack overflow.
-      copyFileSync(from, to);
-      return;
-    }
-  
-    let code: string = require("child_process").spawnSync("things-js", ["inst", from], { encoding: 'utf8' }).stdout;
-    // ThingsJS generates code that calls 'require' at the top of the file but then
-    // demands that 'require' is called as a property of the big sigma global.
-    // This breaks the Octane benchmark, which depends on file inclusion. We will
-    // work around this problem by patching the test runner and the tests.
-    let remove = "require('things-js/lib/core/Code').bootstrap(module, function (Σ) {";
-    if (endsWith(from, 'octane.js')) {
-      let add = "__Σ = (typeof Σ === 'undefined') ? require('things-js/lib/core/Code') : { bootstrap: function(arg1, arg2) { return arg2(Σ); } };\n" +
-        "__Σ.bootstrap(module, function (Σ) { global.Σ = Σ; ";
-      code = add + code.substr(remove.length);
-    } else {
-      let epilogueIndex = code.lastIndexOf("'mqtt://localhost'");
-      let epilogueStartIndex = code.lastIndexOf('\n', epilogueIndex);
-      code = code.substr(0, epilogueStartIndex).substr(remove.length);
-    }
-    writeFileSync(to, code, { encoding: 'utf8' });
-  })();
+  instrumentOctane('things-js', instrumentWithThingsJS)();
   process.exit(0);
 } else {
   console.log(`Unknown configuration '${process.argv[2]}'`);
