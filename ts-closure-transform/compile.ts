@@ -34,6 +34,7 @@ export const CJS_CONFIG = {
   noUnusedLocals: true,
   noUnusedParameters: true,
   stripInternal: true,
+  noImplicitUseStrict: true,
   target: ts.ScriptTarget.ES5
 };
 
@@ -61,9 +62,13 @@ export default function compile(
     let allDiagnostics = ts.getPreEmitDiagnostics(program).concat(emitResult.diagnostics);
 
     allDiagnostics.forEach(diagnostic => {
-      let { line, character } = diagnostic.file.getLineAndCharacterOfPosition(diagnostic.start);
       let message = ts.flattenDiagnosticMessageText(diagnostic.messageText, '\n');
-      console.log(`${diagnostic.file.fileName} (${line + 1},${character + 1}): ${message}`);
+      if (diagnostic.file) {
+        let { line, character } = diagnostic.file.getLineAndCharacterOfPosition(diagnostic.start);
+        console.log(`${diagnostic.file.fileName} (${line + 1},${character + 1}): ${message}`);
+      } else {
+        console.log(`${message}`);
+      }
     });
   }
 
