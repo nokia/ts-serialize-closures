@@ -98,7 +98,7 @@ function compileTo(inputFile: string, outputFile: string, transformClosures: boo
     onError: (message: string) => void | undefined,
     sourceFiles): void {
 
-    if (fileName.indexOf('gbemu-part1') >= 0) {
+    if (transformClosures && fileName.indexOf('gbemu-part1') >= 0) {
       // The Gameboy benchmark is problematic for FlashFreeze because the Gameboy
       // benchmark shares mutable variables across files. Our transform assumes
       // that each file is a separate module, but the Gameboy benchmark breaks
