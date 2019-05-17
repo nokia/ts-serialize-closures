@@ -107,7 +107,7 @@ function compileTo(inputFile: string, outputFile: string, transformClosures: boo
   // Then feed it to the TypeScript compiler.
   compile(
     tsCopyPath,
-    { ...CJS_CONFIG, outFile: outputFile, removeComments: true },
+    { ...CJS_CONFIG, removeComments: true },
     writeFileCallback,
     false,
     transformClosures);
@@ -154,4 +154,5 @@ let thingsJS = instrumentOctane("things-js", (from, to) => {
 });
 
 thingsJS();
+
 process.exit(0);
