@@ -11,3 +11,6 @@ node_modules/
 
 # Ignore package-lock.json file.
 package-lock.json
+
+# Ignore benchmark results.
+transform-benchmarker/results

@@ -1,6 +1,6 @@
 import compile, { CJS_CONFIG } from '../../ts-closure-transform/compile';
 import { resolve, dirname, join, sep, isAbsolute } from 'path';
-import { statSync, readdirSync, copyFileSync, fstat, mkdirSync, writeFileSync } from 'fs';
+import { statSync, readdirSync, copyFileSync, fstat, mkdirSync, writeFileSync, readFileSync } from 'fs';
 
 // Recursive directory creation logic. Based on Mahmoud Mouneer's answer to
 // https://stackoverflow.com/questions/31645738/how-to-create-full-path-with-nodes-fs-mkdirsync
@@ -102,10 +102,33 @@ function instrumentOctane(
         console.log('Score (version ' + suite.version + '): ' + score);
       }
     });
-    let header = 'benchmark,result\n';
-    let csv = header + results.map(pair => pair[0] + ',' + pair[1]).join('\n');
-    let resultsFileName = resolve(process.cwd(), `${configuration}.csv`);
-    writeFileSync(resultsFileName, csv, { encoding: 'utf8' });
+
+    // Create a results directory.
+    let resultsDir = resolve(process.cwd(), 'results');
+    mkDirByPathSync(resultsDir);
+
+    // Write the scores to a CSV.
+    let scoreHeader = 'benchmark,score\n';
+    let scoreCsv = scoreHeader + results.map(pair => pair[0] + ',' + pair[1]).join('\n');
+    let scoreFileName = resolve(resultsDir, `${configuration}-scores.csv`);
+    writeFileSync(scoreFileName, scoreCsv, { encoding: 'utf8' });
+
+    // Write the files' sizes to a CSV.
+    let sizes = [];
+    for (let fileName of readdirSync(resolve(destRootDir, 'octane'))) {
+      let absPath = resolve(destRootDir, 'octane', fileName);
+      let f = statSync(absPath);
+      if (!f.isDirectory() && endsWith(fileName, '.js')) {
+        sizes.push([
+          fileName,
+          Buffer.byteLength(readFileSync(absPath))
+        ]);
+      }
+    }
+    let sizeHeader = 'benchmark,size\n';
+    let sizeCsv = sizeHeader + sizes.map(pair => pair[0] + ',' + pair[1]).join('\n');
+    let sizeFileName = resolve(resultsDir, `${configuration}-sizes.csv`);
+    writeFileSync(sizeFileName, sizeCsv, { encoding: 'utf8' });
   }
 
   return run;
