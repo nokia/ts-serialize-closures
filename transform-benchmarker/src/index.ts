@@ -89,9 +89,11 @@ function instrumentOctane(
 
   let suite = require(resolve(destRootDir, 'octane.js')).BenchmarkSuite;
   function run() {
+    let results = [];
     suite.RunSuites({
       NotifyResult: (name, result) => {
         console.log((name + '                      ').substr(0, 20) + ': ' + result);
+        results.push([name, result]);
       },
       NotifyError: (name, error) => {
         console.log((name + '                      ').substr(0, 20) + ': ' + error);
@@ -100,6 +102,10 @@ function instrumentOctane(
         console.log('Score (version ' + suite.version + '): ' + score);
       }
     });
+    let header = 'benchmark,result\n';
+    let csv = header + results.map(pair => pair[0] + ',' + pair[1]).join('\n');
+    let resultsFileName = resolve(process.cwd(), `${configuration}.csv`);
+    writeFileSync(resultsFileName, csv, { encoding: 'utf8' });
   }
 
   return run;
