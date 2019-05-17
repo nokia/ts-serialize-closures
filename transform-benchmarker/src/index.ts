@@ -87,7 +87,22 @@ function instrumentOctane(
 
   walk('.');
 
-  return require(resolve(destRootDir, 'octane.js')).run;
+  let suite = require(resolve(destRootDir, 'octane.js')).BenchmarkSuite;
+  function run() {
+    suite.RunSuites({
+      NotifyResult: (name, result) => {
+        console.log((name + '                      ').substr(0, 20) + ': ' + result);
+      },
+      NotifyError: (name, error) => {
+        console.log((name + '                      ').substr(0, 20) + ': ' + error);
+      },
+      NotifyScore: (score) => {
+        console.log('Score (version ' + suite.version + '): ' + score);
+      }
+    });
+  }
+
+  return run;
 }
 
 /**
