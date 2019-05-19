@@ -1,6 +1,6 @@
 import compile, { CJS_CONFIG } from '../../ts-closure-transform/compile';
 import { resolve, dirname, join, sep, isAbsolute } from 'path';
-import { statSync, readdirSync, copyFileSync, fstat, mkdirSync, writeFileSync, readFileSync } from 'fs';
+import { statSync, readdirSync, copyFileSync, mkdirSync, writeFileSync, readFileSync, existsSync } from 'fs';
 
 // Recursive directory creation logic. Based on Mahmoud Mouneer's answer to
 // https://stackoverflow.com/questions/31645738/how-to-create-full-path-with-nodes-fs-mkdirsync
@@ -42,6 +42,10 @@ function endsWith(value: string, suffix: string) {
 // Mandreel is a hefty benchmark that takes a long time to process.
 const includeMandreel = true;
 
+// A flag that makes the benchmarker compile/instrument the benchmark
+// suite even if it already exists.
+const alwaysCompile = false;
+
 /**
  * Creates an instrumented version of the Octane benchmark suite.
  * @param configuration The name of the instrumentation tool that is used.
@@ -72,10 +76,14 @@ function instrumentOctane(
       } else if (!ignoreSource
           && endsWith(name, '.js')
           && (includeMandreel || name != 'mandreel.js')) {
-        // Instrument JavaScript files.
-        instrumentFile(
-          resolve(sourcePath, name),
-          resolve(destPath, name));
+        // Instrument JavaScript files, but only if they haven't been
+        // instrumented already. Re-instrumenting files takes time that
+        // we'd rather not waste.
+        if (alwaysCompile || !existsSync(destPath)) {
+          instrumentFile(
+            resolve(sourcePath, name),
+            resolve(destPath, name));
+        }
       } else {
         // Copy all other files.
         copyFileSync(
