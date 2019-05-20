@@ -79,10 +79,9 @@ function instrumentOctane(
         // Instrument JavaScript files, but only if they haven't been
         // instrumented already. Re-instrumenting files takes time that
         // we'd rather not waste.
-        if (alwaysCompile || !existsSync(destPath)) {
-          instrumentFile(
-            resolve(sourcePath, name),
-            resolve(destPath, name));
+        let destFilePath = resolve(destPath, name);
+        if (alwaysCompile || !existsSync(destFilePath)) {
+          instrumentFile(resolve(sourcePath, name), destFilePath);
         }
       } else {
         // Copy all other files.
