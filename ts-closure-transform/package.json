@@ -1,5 +1,5 @@
 {
-  "name": "@xstream/ts-closure-transform",
+  "name": "ts-closure-transform",
   "version": "0.1.1",
   "description": "Rewrites functions to include a '__closure' property, suitable for function serialization.",
   "main": "dist/index.js",
@@ -11,7 +11,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://gitlabe1.ext.net.nokia.com/vandercr/ts-serialize-closures.git"
+    "url": "git+https://github.com/nokia/ts-serialize-closures.git"
   },
   "keywords": [
     "typescript",
@@ -19,14 +19,15 @@
     "modules"
   ],
   "author": "Jonathan Van der Cruysse",
-  "license": "MIT",
+  "contributors": [ "Lode Hoste <lode.hoste@nokia-bell-labs.com" ],
+  "license": "BSD-3-Clause",
   "bugs": {
-    "url": "https://gitlabe1.ext.net.nokia.com/vandercr/ts-serialize-closures/issues"
+    "url": "https://github.com/nokia/ts-serialize-closures/issues"
   },
   "files": [
     "dist"
   ],
-  "homepage": "https://gitlabe1.ext.net.nokia.com/vandercr/ts-serialize-closures#readme",
+  "homepage": "https://github.com/nokia/ts-serialize-closures/blob/master/README.md",
   "devDependencies": {
     "@types/chai": "^3.5.2",
     "@types/fs-extra": "^2.1.0",

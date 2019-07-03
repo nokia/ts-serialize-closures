@@ -1,5 +1,5 @@
 {
-  "name": "@xstream/serialize-closures",
+  "name": "serialize-closures",
   "version": "0.2.3",
   "description": "Serializes closures processed by the ts-closure-transform package.",
   "main": "dist/src/index.js",
@@ -10,7 +10,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://gitlabe1.ext.net.nokia.com/vandercr/ts-serialize-closures.git"
+    "url": "git+https://github.com/nokia/ts-serialize-closures.git"
   },
   "files": [
     "dist/src"
@@ -21,11 +21,12 @@
     "modules"
   ],
   "author": "Jonathan Van der Cruysse",
-  "license": "MIT",
+  "contributors": [ "Lode Hoste <lode.hoste@nokia-bell-labs.com" ],
+  "license": "BSD-3-Clause",
   "bugs": {
-    "url": "https://gitlabe1.ext.net.nokia.com/vandercr/ts-serialize-closures/issues"
+    "url": "https://github.com/nokia/ts-serialize-closures/issues"
   },
-  "homepage": "https://gitlabe1.ext.net.nokia.com/vandercr/ts-serialize-closures#readme",
+  "homepage": "https://github.com/nokia/ts-serialize-closures/blob/master/README.md",
   "devDependencies": {
     "@types/chai": "^3.5.2",
     "@types/fs-extra": "^2.1.0",
