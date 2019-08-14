@@ -1,0 +1,16 @@
+{
+    "compileOnSave": true,
+    "compilerOptions": {
+        "target": "ES5",
+        "module": "commonjs",
+        "declaration": true,
+        "moduleResolution": "node",
+        "stripInternal": true,
+        "jsx": "react",
+        "outDir": "dist"
+    },
+    "exclude": [
+        "node_modules",
+        "dist"
+    ]
+}

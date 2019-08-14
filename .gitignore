@@ -1,0 +1,12 @@
+# Ignore output files.
+dist/
+
+# Ignore generated files.
+**/*.js
+!ts-closure-transform/test/fixture/*.js
+
+# Ignore node modules.
+node_modules/
+
+# Ignore package-lock.json file.
+package-lock.json
