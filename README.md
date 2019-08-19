@@ -1,3 +1,7 @@
+[![License](https://img.shields.io/badge/License-BSD%203--Clause-blue.svg)](https://opensource.org/licenses/BSD-3-Clause)
+[![npm version](https://badge.fury.io/js/serialize-closures.svg)](https://badge.fury.io/js/serialize-closures)
+[![npm version](https://badge.fury.io/js/ts-serialize-closures.svg)](https://badge.fury.io/js/ts-serialize-closures)
+
 # ts-serialize-closures
 
 Serialize your TypeScript functions!
@@ -45,6 +49,7 @@ The serializer consists of two components.
   2. `serialize-closures`: a runtime library that defines the `serialize` and `deserialize` functions. These should work for any object graph as long as all source code has first been processed by `ts-closure-transform`. With `ts-closure-transform`, you can write things like this:
 
       ```typescript
+      import { serialized, deserialize } from 'serialize-closures';
       // Just about anything can be serialized by calling `serialize`.
       let capturedVariable = 5;
       let serialized = serialize(() => capturedVariable);
@@ -55,6 +60,7 @@ The serializer consists of two components.
 
       // Serialized representations can be deserialized by calling `deserialize`.
       console.log(deserialize(serialized)()); // Prints '5'.
+      console.log(deserialize(parsed)());     // Prints '5'.
       ```
 
 ## Limitations
