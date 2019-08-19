@@ -1,6 +1,6 @@
 [![License](https://img.shields.io/badge/License-BSD%203--Clause-blue.svg)](https://opensource.org/licenses/BSD-3-Clause)
 [![npm version](https://badge.fury.io/js/serialize-closures.svg)](https://badge.fury.io/js/serialize-closures)
-[![npm version](https://badge.fury.io/js/ts-serialize-closures.svg)](https://badge.fury.io/js/ts-serialize-closures)
+[![npm version](https://badge.fury.io/js/ts-closure-transform.svg)](https://badge.fury.io/js/ts-closure-transform)
 
 # ts-serialize-closures
 
