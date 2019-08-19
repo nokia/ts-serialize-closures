@@ -1,0 +1,22 @@
+
+{
+  "compilerOptions": {
+    "target": "ES2017",
+    "module": "commonjs",
+    "noImplicitAny": false,
+    "noImplicitThis": false,
+    "strict": true,
+    "strictNullChecks": false,
+    "declaration": true,
+    "emitDecoratorMetadata": true,
+    "experimentalDecorators": true,
+    "sourceMap": true,
+    "outDir": "./dist"
+  },
+  "exclude": [
+    "webpack.config.js",
+    "dist"
+  ],
+  "compileOnSave": true,
+  "buildOnSave": true
+}

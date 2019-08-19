@@ -3,6 +3,7 @@ dist/
 
 # Ignore generated files.
 **/*.js
+!webpack.config.js
 !ts-closure-transform/test/fixture/*.js
 
 # Ignore node modules.

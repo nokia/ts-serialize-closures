@@ -25,6 +25,67 @@ This tool might be useful in a number of scenarios:
 
 ## Usage
 
+The serializer (`serialize-closures`) requires a preprocessing step (`ts-closure-transform`). Therefore, the typical usage of this library is to configure webpack to automatically transform the source code using a hook in the TypeScript compiler (`tsc`). Take the following steps to set up a stand-alone example:
+
+  1. Prepare project and install dev-dependencies
+```bash
+mkdir example && cd example
+npm init
+npm install --save-dev ts-closure-transform serialize-closures webpack webpack-cli typescript ts-loader
+```
+
+  2. Configure `webpack.config.js`:
+```javascript
+const tsClosureTransform = require('ts-closure-transform');
+const path = require('path');
+module.exports = {
+  module: {
+    rules: [
+      {
+        test: /.tsx?$/,
+        loader: 'ts-loader', // or 'awesome-typescript-loader'
+        options: {
+          getCustomTransformers: () => ({
+            before: [tsClosureTransform.beforeTransform()],
+            after: [tsClosureTransform.afterTransform()]
+          })
+        }
+      }
+    ]
+  },
+  resolve: {
+    extensions: [ '.tsx', '.ts', '.js' ]
+  },
+  output: {
+    path: path.join(__dirname, 'dist')
+  }
+}
+```
+
+  3. Write code to serialize and deserialize arbitrary functions:
+```typescript
+import { serialize, deserialize } from 'serialize-closures';
+// Just about anything can be serialized by calling `serialize`.
+let capturedVariable = 5;
+let serialized = serialize(() => capturedVariable);
+
+// Serialized representations can be stringified and parsed.
+let text = JSON.stringify(serialized);
+let parsed = JSON.parse(text);
+
+// Serialized representations can be deserialized by calling `deserialize`.
+console.log(deserialize(serialized)()); // Prints '5'.
+console.log(deserialize(parsed)());     // Prints '5'.
+```
+
+  4. Compile with webpack and run the sample
+```bash
+./node_modules/.bin/webpack --mode=development src/test.ts -o dist/test.js
+node dist/test.js
+```
+
+## Components
+
 The serializer consists of two components.
 
   1. `ts-closure-transform`: a transformation to inject in the TypeScript compiler's pass pipeline. This transformation will rewrite all function definitions to include a special `__closure` property. The serializer uses that `__closure` property to figure out which variables are captured by the function.
@@ -46,22 +107,8 @@ The serializer consists of two components.
 
       Note that `ts-closure-transform` is strictly a dev dependency: there's no need to package it with your application.
 
-  2. `serialize-closures`: a runtime library that defines the `serialize` and `deserialize` functions. These should work for any object graph as long as all source code has first been processed by `ts-closure-transform`. With `ts-closure-transform`, you can write things like this:
+  2. `serialize-closures`: a runtime library that defines the `serialize` and `deserialize` functions. These should work for any object graph as long as all source code has first been processed by `ts-closure-transform`.
 
-      ```typescript
-      import { serialized, deserialize } from 'serialize-closures';
-      // Just about anything can be serialized by calling `serialize`.
-      let capturedVariable = 5;
-      let serialized = serialize(() => capturedVariable);
-
-      // Serialized representations can be stringified and parsed.
-      let text = JSON.stringify(serialized);
-      let parsed = JSON.parse(text);
-
-      // Serialized representations can be deserialized by calling `deserialize`.
-      console.log(deserialize(serialized)()); // Prints '5'.
-      console.log(deserialize(parsed)());     // Prints '5'.
-      ```
 
 ## Limitations
 
