@@ -234,7 +234,7 @@ function downloadDisclosureInstrumented(relativePath: string, outputFile: string
   relativePath = relativePath.replace('octane/', 'octane/inst/');
   let url = prefix + relativePath;
 
-  console.log(relativePath);
+  console.log(`Downloading ${relativePath} from ${url}...`);
   if (relativePath == 'octane.js') {
     // Download octane.js and patch it.
     let body = request('GET', url).getBody('utf8');
