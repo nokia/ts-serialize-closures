@@ -58,20 +58,34 @@ def write_aggregated(destination, aggregated, *names):
     # We'll return a dictionary that maps names to their mean scores
     # relative to the baseline.
     results = {key: 0.0 for key in names}
-    count = 0
+    counts = {key: 0 for key in names}
     for row in aggregated:
-        if any(filter(math.isnan, row[1:])):
-            # This benchmark errored for at least one instrumentation
-            # technique. We'll drop it entirely in the interest of fairness.
-            continue
+        # Dropping numbers was fair back when we were comparing
+        # FlashFreeze to ThingsMigrate only, but now that we're
+        # having a three-way comparison between FlashFreeze,
+        # ThingsMigrate and Disclosure, picking a subset of benchmarks
+        # on which all techniques succeed is actually fairly disingenuous
+        # because it really affects the results we get.
+        #
+        # For instance, ThingsMigrate performs really well on the 'zlib'
+        # benchmark, which helped improve ThingsMigrate's overall score.
+        # This means that if we put Disclosure in the mix (which fails on
+        # 'zlib') and discard all benchmarks on which any technique fails,
+        # then we're effectively penalizing ThingsMigrate for little reason.
+        # That's hardly fair, explaining why the rule below has been removed.
+        #
+        # if any(filter(math.isnan, row[1:])):
+        #     # This benchmark errored for at least one instrumentation
+        #     # technique. We'll drop it entirely in the interest of fairness.
+        #     continue
 
         for key, value in zip(names, row[1:]):
-            results[key] += value
-
-        count += 1
+            if not math.isnan(value):
+                results[key] += value
+                counts[key] += 1
 
     for key in names:
-        results[key] /= count
+        results[key] /= counts[key]
 
     return results
 
