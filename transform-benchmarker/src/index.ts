@@ -1,4 +1,5 @@
 import compile, { CJS_CONFIG } from '../../ts-closure-transform/compile';
+import request from 'sync-request';
 import { resolve, dirname, join, sep, isAbsolute } from 'path';
 import { statSync, readdirSync, copyFileSync, mkdirSync, writeFileSync, readFileSync, existsSync } from 'fs';
 
@@ -54,7 +55,7 @@ const alwaysCompile = false;
  */
 function instrumentOctane(
   configuration: string,
-  instrumentFile: (inputPath: string, outputPath: string) => void):
+  instrumentFile: (inputPath: string, outputPath: string, relativePath?: string | undefined) => void):
   () => void {
 
   let sourceRootDir = dirname(require.resolve('benchmark-octane/lib/octane'));
@@ -74,14 +75,14 @@ function instrumentOctane(
         // aren't part of the benchmark code, so excluding them is harmless.
         walk(join(relativePath, name), ignoreSource || name == 'js');
       } else if (!ignoreSource
-          && endsWith(name, '.js')
-          && (includeMandreel || name != 'mandreel.js')) {
+        && endsWith(name, '.js')
+        && (includeMandreel || name != 'mandreel.js')) {
         // Instrument JavaScript files, but only if they haven't been
         // instrumented already. Re-instrumenting files takes time that
         // we'd rather not waste.
         let destFilePath = resolve(destPath, name);
         if (alwaysCompile || !existsSync(destFilePath)) {
-          instrumentFile(resolve(sourcePath, name), destFilePath);
+          instrumentFile(resolve(sourcePath, name), destFilePath, join(relativePath, name));
         }
       } else {
         // Copy all other files.
@@ -228,6 +229,30 @@ function instrumentWithThingsJS(inputFile: string, outputFile: string) {
   writeFileSync(outputFile, code, { encoding: 'utf8' });
 }
 
+function downloadDisclosureInstrumented(relativePath: string, outputFile: string) {
+  let prefix = 'https://raw.githubusercontent.com/jaeykim/Disclosure/master/lib/';
+  relativePath = relativePath.replace('octane/', 'octane/inst/');
+  let url = prefix + relativePath;
+
+  console.log(relativePath);
+  if (relativePath == 'octane.js') {
+    // Download octane.js and patch it.
+    let body = request('GET', url).getBody('utf8');
+    body = exportBenchmarkSuite(body);
+    body = body.replace('/octane/inst/', '/octane/');
+    writeFileSync(outputFile, body, { encoding: 'utf8' });
+
+    // Also download disclosure.js.
+    downloadDisclosureInstrumented('disclosure.js', outputFile.replace('octane.js', 'disclosure.js'));
+  }
+  else {
+    let response = request('GET', url);
+    if (response.statusCode != 404) {
+      writeFileSync(outputFile, response.getBody());
+    }
+  }
+}
+
 if (process.argv.length <= 2 || process.argv[2] == 'original') {
   instrumentOctane('original', (from, to) => {
     instrumentWithTsc(from, to, false);
@@ -239,6 +264,8 @@ if (process.argv.length <= 2 || process.argv[2] == 'original') {
 } else if (process.argv[2] == 'things-js') {
   instrumentOctane('things-js', instrumentWithThingsJS)();
   process.exit(0);
+} else if (process.argv[2] == 'disclosure') {
+  instrumentOctane('disclosure', (from, to, rel) => downloadDisclosureInstrumented(rel, to))();
 } else {
   console.log(`Unknown configuration '${process.argv[2]}'`);
   process.exit(1);

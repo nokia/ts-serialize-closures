@@ -82,10 +82,12 @@ print(
         'results/scores.csv',
         aggregate_category('results/original-scores.csv',
                            'results/flash-freeze-scores.csv',
-                           'results/things-js-scores.csv'),
+                           'results/things-js-scores.csv',
+                           'results/disclosure-scores.csv'),
         'original',
         'flash-freeze',
-        'things-js'))
+        'things-js',
+        'disclosure'))
 
 print('Size means:')
 print(
@@ -93,10 +95,12 @@ print(
         'results/sizes.csv',
         aggregate_category('results/original-sizes.csv',
                            'results/flash-freeze-sizes.csv',
-                           'results/things-js-sizes.csv'),
+                           'results/things-js-sizes.csv',
+                           'results/disclosure-sizes.csv'),
         'original',
         'flash-freeze',
-        'things-js'))
+        'things-js',
+        'disclosure'))
 
 print('Score coordinates:')
 print(','.join(sorted(read_results('results/original-scores.csv'))))

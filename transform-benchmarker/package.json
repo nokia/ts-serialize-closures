@@ -8,7 +8,8 @@
     "prepublish": "tsc",
     "original": "tsc && node dist/transform-benchmarker/src/index.js original",
     "flash-freeze": "tsc && node dist/transform-benchmarker/src/index.js flash-freeze",
-    "things-js": "tsc && node dist/transform-benchmarker/src/index.js things-js"
+    "things-js": "tsc && node dist/transform-benchmarker/src/index.js things-js",
+    "disclosure": "tsc && node dist/transform-benchmarker/src/index.js disclosure"
   },
   "repository": {
     "type": "git",
@@ -37,5 +38,8 @@
     "ts-node": "^3.0.2",
     "typescript": "^2.7.0-rc"
   },
-  "dependencies": {}
+  "dependencies": {
+    "sync-request": "^6.1.0",
+    "then-request": "^6.0.2"
+  }
 }
