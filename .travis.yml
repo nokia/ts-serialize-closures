@@ -7,6 +7,9 @@ node_js:
   - node
   # Node v10.9.0 (same as GitLab CI config).
   - 10.9.0
+  # Node v9 as some node APIs that we rely on behave differently on Node <10.
+  # See comments in serialize-closures/src/{builtins,serializedGraph}.ts.
+  - 9
 
 before_install:
   # Install tsc, type TypeScript compiler.
