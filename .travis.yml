@@ -12,7 +12,7 @@ node_js:
   - 9
 
 before_install:
-  # Install tsc, type TypeScript compiler.
+  # Install tsc, the TypeScript compiler.
   - npm install -g typescript
 
 install:
