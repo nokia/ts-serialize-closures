@@ -41,7 +41,8 @@ export default function compile(
   input: string,
   options: ts.CompilerOptions = CJS_CONFIG,
   writeFile?: ts.WriteFileCallback,
-  printDiagnostics: boolean = true) {
+  printDiagnostics: boolean = true,
+  transformClosures: boolean = true) {
 
   const files = globSync(input);
 
@@ -50,14 +51,11 @@ export default function compile(
 
   const msgs = {};
 
-  let emitResult = program.emit(undefined, writeFile, undefined, undefined, {
-    before: [
-      beforeTransform()
-    ],
-    after: [
-      afterTransform()
-    ]
-  });
+  let transformers = transformClosures
+    ? { before: [beforeTransform()], after: [afterTransform()] }
+    : undefined;
+
+  let emitResult = program.emit(undefined, writeFile, undefined, undefined, transformers);
 
   if (printDiagnostics) {
     let allDiagnostics = ts.getPreEmitDiagnostics(program).concat(emitResult.diagnostics);
