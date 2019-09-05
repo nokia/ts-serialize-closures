@@ -21,7 +21,7 @@
     "modules"
   ],
   "author": "Jonathan Van der Cruysse",
-  "license": "MIT",
+  "license": "BSD-3-Clause",
   "bugs": {
     "url": "https://gitlabe1.ext.net.nokia.com/vandercr/ts-serialize-closures/issues"
   },
