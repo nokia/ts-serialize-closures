@@ -34,13 +34,16 @@ export const CJS_CONFIG = {
   noUnusedLocals: true,
   noUnusedParameters: true,
   stripInternal: true,
+  noImplicitUseStrict: true,
   target: ts.ScriptTarget.ES5
 };
 
 export default function compile(
   input: string,
   options: ts.CompilerOptions = CJS_CONFIG,
-  writeFile?: ts.WriteFileCallback) {
+  writeFile?: ts.WriteFileCallback,
+  printDiagnostics: boolean = true,
+  transformClosures: boolean = true) {
 
   const files = globSync(input);
 
@@ -49,21 +52,25 @@ export default function compile(
 
   const msgs = {};
 
-  let emitResult = program.emit(undefined, writeFile, undefined, undefined, {
-    before: [
-      beforeTransform()
-    ],
-    after: [
-      afterTransform()
-    ]
-  });
+  let transformers = transformClosures
+    ? { before: [beforeTransform()], after: [afterTransform()] }
+    : undefined;
 
-  let allDiagnostics = ts.getPreEmitDiagnostics(program).concat(emitResult.diagnostics);
+  let emitResult = program.emit(undefined, writeFile, undefined, undefined, transformers);
 
-  allDiagnostics.forEach(diagnostic => {
-    let { line, character } = diagnostic.file.getLineAndCharacterOfPosition(diagnostic.start);
-    let message = ts.flattenDiagnosticMessageText(diagnostic.messageText, '\n');
-    console.log(`${diagnostic.file.fileName} (${line + 1},${character + 1}): ${message}`);
-  });
+  if (printDiagnostics) {
+    let allDiagnostics = ts.getPreEmitDiagnostics(program).concat(emitResult.diagnostics);
+
+    allDiagnostics.forEach(diagnostic => {
+      let message = ts.flattenDiagnosticMessageText(diagnostic.messageText, '\n');
+      if (diagnostic.file) {
+        let { line, character } = diagnostic.file.getLineAndCharacterOfPosition(diagnostic.start);
+        console.log(`${diagnostic.file.fileName} (${line + 1},${character + 1}): ${message}`);
+      } else {
+        console.log(`${message}`);
+      }
+    });
+  }
+
   return msgs;
 }

@@ -59,7 +59,8 @@ function assertCompilesTo(sourceFile: string, expectedOutput: string) {
   compile(
     resolve(__dirname, `fixture/${sourceFile}`),
     { ...CJS_CONFIG, target: ts.ScriptTarget.Latest },
-    writeFileCallback);
+    writeFileCallback,
+    false);
 }
 
 /**
@@ -103,7 +104,7 @@ describe('Compilation', () => {
 
 describe('Serialization', () => {
   for (let fileName of getFilesWithExtension('serialization', 'ts')) {
-    compile(resolve(__dirname, `serialization/${fileName}`));
+    compile(resolve(__dirname, `serialization/${fileName}`), undefined, undefined, false);
 
     let jsFileName = resolve(__dirname, `serialization/${fileName.substr(0, fileName.length - 3)}.js`);
     let compiledModule = require(jsFileName);
