@@ -58,8 +58,23 @@ export class VariableNumberingStore {
  * A scope data structure that assigns a unique id to each variable.
  */
 export class VariableNumberingScope {
+  /**
+   * All local variables defined in this scope.
+   */
   private readonly localVariables: { [name: string]: VariableId };
-  private readonly parent: VariableNumberingScope | undefined;
+
+  /**
+   * A set of variable IDs that have not been explicitly defined
+   * in a variable numbering scope yet. This set is shared by
+   * all variable numbering scopes and can be indexed by variable
+   * names.
+   */
+  private readonly pendingVariables: { [name: string]: VariableId };
+
+  /**
+   * This scope's parent scope.
+   */
+  readonly parent: VariableNumberingScope | undefined;
 
   /**
    * The variable numbering store for this scope.
@@ -81,12 +96,15 @@ export class VariableNumberingScope {
     this.localVariables = {};
     if (!parentOrStore) {
       this.parent = undefined;
+      this.pendingVariables = {};
       this.store = new VariableNumberingStore();
     } else if (parentOrStore instanceof VariableNumberingScope) {
       this.parent = parentOrStore;
+      this.pendingVariables = parentOrStore.pendingVariables;
       this.store = parentOrStore.store;
     } else {
       this.parent = undefined;
+      this.pendingVariables = {};
       this.store = parentOrStore;
     }
   }
@@ -97,11 +115,43 @@ export class VariableNumberingScope {
    * @param name The name of the variable to define.
    */
   define(name: ts.Identifier): VariableId {
-    let newId = this.store.getOrCreateId(name);
+    // If the variable is pending, then we want to reuse
+    // the pending ID.
+    let newId: VariableId;
+    if (name.text in this.pendingVariables) {
+      newId = this.pendingVariables[name.text];
+      delete this.pendingVariables[name.text];
+      this.store.setId(name, newId);
+    } else {
+      newId = this.store.getOrCreateId(name);
+    }
+
     if (name.text !== "") {
       this.localVariables[name.text] = newId;
     }
     return newId;
+  }
+
+  /**
+   * Defines in this scope all variables specified by a binding name.
+   * @param name A binding name that lists variables to define.
+   */
+  defineVariables(name: ts.BindingName) {
+    if (name === undefined) {
+
+    } else if (ts.isIdentifier(name)) {
+      this.define(name);
+    } else if (ts.isArrayBindingPattern(name)) {
+      for (let elem of name.elements) {
+        if (ts.isBindingElement(elem)) {
+          this.defineVariables(elem.name);
+        }
+      }
+    } else {
+      for (let elem of name.elements) {
+        this.defineVariables(elem.name);
+      }
+    }
   }
 
   /**
@@ -118,13 +168,21 @@ export class VariableNumberingScope {
       let id = this.localVariables[text];
       this.store.setId(name, id);
       return id;
+    } else if (text in this.pendingVariables) {
+      // If the name is defined in the pending variables,
+      // then we'll essentially do the same thing.
+      let id = this.pendingVariables[text];
+      this.store.setId(name, id);
+      return id;
     } else if (this.parent) {
       // If the scope has a parent and the name is not defined
       // as a local variable, then defer to the parent.
       return this.parent.getId(name);
     } else {
-      // Otherwise, "define" the name as a global.
-      return this.define(name);
+      // Otherwise, add the name to the pending list.
+      let id = this.store.getOrCreateId(name);
+      this.pendingVariables[name.text] = id;
+      return id;
     }
   }
 
@@ -211,6 +269,27 @@ export abstract class VariableVisitor {
   }
 
   /**
+   * Visits a statement node. If the statement expands into more than
+   * one statement or no statements at all, then the result is wrapped
+   * in a block.
+   * @param node The statement node to visit.
+   */
+  protected visitStatement(node: ts.Statement): ts.Statement {
+    let result = this.visit(node);
+    if (result === undefined) {
+      return ts.createBlock([]);
+    } else if (Array.isArray(result)) {
+      if (result.length == 1) {
+        return <ts.Statement>result[0];
+      } else {
+        return ts.createBlock(<ts.Statement[]>result);
+      }
+    } else {
+      return <ts.Statement>result;
+    }
+  }
+
+  /**
    * Visits a particular node.
    * @param node The node to visit.
    */
@@ -221,13 +300,29 @@ export abstract class VariableVisitor {
     }
     // Expressions
     else if (ts.isIdentifier(node)) {
-      return this.visitUse(node, this.scope.getId(node));
+      if (node.text !== "undefined"
+        && node.text !== "null"
+        && node.text !== "arguments") {
+        return this.visitUse(node, this.scope.getId(node));
+      } else {
+        return node;
+      }
+
+    } else if (ts.isTypeNode(node)) {
+      // Don't visit type nodes.
+      return node;
 
     } else if (ts.isPropertyAccessExpression(node)) {
       return ts.updatePropertyAccess(
         node,
         this.visitExpression(node.expression),
         node.name);
+
+    } else if (ts.isQualifiedName(node)) {
+      return ts.updateQualifiedName(
+        node,
+        <ts.EntityName>this.visit(node.left),
+        node.right);
 
     } else if (ts.isPropertyAssignment(node)) {
       return ts.updatePropertyAssignment(
@@ -258,25 +353,16 @@ export abstract class VariableVisitor {
     // Statements
     else if (ts.isVariableStatement(node)) {
       return this.visitVariableStatement(node);
+    } else if (ts.isForStatement(node)) {
+      return this.visitForStatement(node);
+    } else if (ts.isForInStatement(node) || ts.isForOfStatement(node)) {
+      return this.visitForInOrOfStatement(node);
+    } else if (ts.isTryStatement(node)) {
+      return this.visitTryStatement(node);
     }
     // Things that introduce scopes.
     else if (ts.isArrowFunction(node)) {
-
-      let oldScope = this.scope;
-      this.scope = new VariableNumberingScope(true, oldScope);
-
-      for (let param of node.parameters) {
-        this.defineVariables(param.name);
-      }
-
-      let body = node.body;
-      if (ts.isBlock(body)) {
-        body = this.visitBlock(body);
-      } else {
-        body = this.visitExpression(body);
-      }
-
-      this.scope = oldScope;
+      let body = this.visitFunctionBody(node.parameters, node.body);
       return ts.updateArrowFunction(
         node,
         node.modifiers,
@@ -287,19 +373,7 @@ export abstract class VariableVisitor {
         body);
 
     } else if (ts.isFunctionExpression(node)) {
-
-      let oldScope = this.scope;
-      this.scope = new VariableNumberingScope(true, oldScope);
-
-      this.defineVariables(node.name);
-
-      for (let param of node.parameters) {
-        this.defineVariables(param.name);
-      }
-
-      let body = this.visitBlock(node.body);
-
-      this.scope = oldScope;
+      let body = this.visitFunctionBody(node.parameters, node.body, node.name);
       return ts.updateFunctionExpression(
         node,
         node.modifiers,
@@ -310,30 +384,40 @@ export abstract class VariableVisitor {
         node.type,
         body);
 
-    } else if (ts.isFunctionDeclaration(node)) {
+    } else if (ts.isGetAccessor(node)) {
+      return ts.updateGetAccessor(
+        node,
+        node.decorators,
+        node.modifiers,
+        node.name,
+        node.parameters,
+        node.type,
+        this.visitFunctionBody(node.parameters, node.body));
 
-      let oldScope = this.scope;
-      this.scope = new VariableNumberingScope(true, oldScope);
+    } else if (ts.isSetAccessor(node)) {
+      return ts.updateSetAccessor(
+        node,
+        node.decorators,
+        node.modifiers,
+        node.name,
+        node.parameters,
+        this.visitFunctionBody(node.parameters, node.body));
 
-      this.defineVariables(node.name);
-
-      for (let param of node.parameters) {
-        this.defineVariables(param.name);
-      }
-
-      let body = this.visitBlock(node.body);
-
-      this.scope = oldScope;
-      return ts.updateFunctionDeclaration(
+    } else if (ts.isMethodDeclaration(node)) {
+      return ts.updateMethod(
         node,
         node.decorators,
         node.modifiers,
         node.asteriskToken,
         node.name,
+        node.questionToken,
         node.typeParameters,
         node.parameters,
         node.type,
-        body);
+        this.visitFunctionBody(node.parameters, node.body));
+
+    } else if (ts.isFunctionDeclaration(node)) {
+      return this.visitFunctionDeclaration(node);
 
     } else {
       let oldScope = this.scope;
@@ -460,7 +544,7 @@ export abstract class VariableVisitor {
                 expression.operand,
                 value)));
         } else {
-          let temp = this.createTempVariable();
+          let temp = this.createTemporary();
           this.ctx.hoistVariableDeclaration(temp);
 
           let firstUse = this.visitUse(expression.operand, id);
@@ -487,25 +571,14 @@ export abstract class VariableVisitor {
   }
 
   /**
-   * Defines all variable in a binding name.
+   * Defines all variables in a binding name.
    * @param name A binding name.
+   * @param scope The scope to define the variables in.
    */
   private defineVariables(name: ts.BindingName) {
-    if (name === undefined) {
-
-    } else if (ts.isIdentifier(name)) {
-      this.scope.define(name);
-    } else if (ts.isArrayBindingPattern(name)) {
-      for (let elem of name.elements) {
-        if (ts.isBindingElement(elem)) {
-          this.defineVariables(elem.name);
-        }
-      }
-    } else {
-      for (let elem of name.elements) {
-        this.defineVariables(elem.name);
-      }
-    }
+    // This is a little off for 'let' bindings, but we'll just
+    // assume that those have all been lowered to 'var' already.
+    this.scope.functionScope.defineVariables(name);
   }
 
   /**
@@ -554,7 +627,7 @@ export abstract class VariableVisitor {
         let init = this.visitDef(name, id);
         let rewrite = this.visitAssignment(name, id);
         if (rewrite) {
-          let temp = this.createTempVariable();
+          let temp = this.createTemporary();
           fixups.push(
             ts.createVariableStatement(
               [],
@@ -670,9 +743,213 @@ export abstract class VariableVisitor {
   }
 
   /**
+   * Visits a 'for' statement.
+   * @param statement The statement to visit.
+   */
+  private visitForStatement(statement: ts.ForStatement): ts.VisitResult<ts.Statement> {
+    // Rewriting variables in 'for' statements is actually pretty hard
+    // because definitions, uses and assignments may be rewritten in
+    // such a way that a 'for' statement is no longer applicable.
+    //
+    // For example, consider this 'for' loop:
+    //
+    //     for (let i = f(); i < 10; i++) {
+    //         g();
+    //     }
+    //
+    // If `var i = f()` is rewritten as anything other than a single
+    // variable declaration list, then the logic we want to set up
+    // can no longer be expressed as a simple 'for' loop. Fortunately,
+    // we can factor out the initialization part:
+    //
+    //     {
+    //         let i = f();
+    //         for (; i < 10; i++) {
+    //             g();
+    //         }
+    //     }
+    //
+
+    // 'for' statements introduce a new scope, so let's handle that right away.
+    let oldScope = this.scope;
+    this.scope = new VariableNumberingScope(false, oldScope);
+    let result;
+    if (statement.initializer && ts.isVariableDeclarationList(statement.initializer)) {
+      // If the 'for' has a variable declaration list as an initializer, then turn
+      // the initializer into a variable declaration statement.
+      let initializer = this.visitStatement(ts.createVariableStatement([], statement.initializer));
+
+      // Also visit the condition, incrementor and body.
+      let condition = this.visitExpression(statement.condition);
+      let incrementor = this.visitExpression(statement.incrementor);
+      let body = this.visitStatement(statement.statement);
+
+      if (ts.isVariableStatement(initializer)) {
+        // If the initializer has been rewritten as a variable declaration, then
+        // we can create a simple 'for' loop.
+        result = ts.updateFor(statement, initializer.declarationList, condition, incrementor, body);
+      } else {
+        // Otherwise, we'll factor out the initializer.
+        result = ts.createBlock([
+          initializer,
+          ts.updateFor(statement, undefined, condition, incrementor, body)
+        ]);
+      }
+    } else {
+      result = this.visitChildren(statement);
+    }
+    // Restore the enclosing scope and return.
+    this.scope = oldScope;
+    return result;
+  }
+
+  /**
+   * Visits a 'try' statement.
+   * @param statement The statement to visit.
+   */
+  private visitTryStatement(statement: ts.TryStatement): ts.VisitResult<ts.Statement> {
+    let tryBlock = this.visitBlock(statement.tryBlock);
+    let catchClause;
+    if (statement.catchClause) {
+      // Catch clauses may introduce a new, locally-scoped variable.
+      let oldScope = this.scope;
+      this.scope = new VariableNumberingScope(false, oldScope);
+      if (statement.catchClause.variableDeclaration) {
+        // FIXME: allow this variable to be rewritten.
+        this.defineVariables(statement.catchClause.variableDeclaration.name);
+      }
+      catchClause = ts.updateCatchClause(
+        statement.catchClause,
+        statement.catchClause.variableDeclaration,
+        this.visitBlock(statement.catchClause.block));
+      this.scope = oldScope;
+    } else {
+      catchClause = statement.catchClause;
+    }
+    let finallyBlock = statement.finallyBlock
+      ? this.visitBlock(statement.finallyBlock)
+      : statement.finallyBlock;
+    return ts.updateTry(statement, tryBlock, catchClause, finallyBlock);
+  }
+
+  /**
+   * Visits a 'for...in/of' statement.
+   * @param statement The statement to visit.
+   */
+  private visitForInOrOfStatement(statement: ts.ForInOrOfStatement): ts.VisitResult<ts.Statement> {
+    // 'for' statements may introduce a new, locally-scoped variable.
+    let oldScope = this.scope;
+    this.scope = new VariableNumberingScope(false, oldScope);
+    let initializer = statement.initializer;
+    if (ts.isVariableDeclarationList(initializer)) {
+      // FIXME: allow declarations to be rewritten here.
+      for (let element of initializer.declarations) {
+        this.defineVariables(element.name);
+      }
+    } else {
+      initializer = this.visitExpression(initializer);
+    }
+    let expr = this.visitExpression(statement.expression);
+    let body = this.visitStatement(statement.statement);
+    this.scope = oldScope;
+
+    if (ts.isForInStatement(statement)) {
+      return ts.updateForIn(statement, initializer, expr, body);
+    } else {
+      return ts.updateForOf(statement, statement.awaitModifier, initializer, expr, body);
+    }
+  }
+
+  /**
+   * Visits a function body.
+   * @param parameters The function's list of parameters.
+   * @param body The function's body.
+   * @param body The function's name, if any.
+   */
+  private visitFunctionBody(
+    parameters: ts.NodeArray<ts.ParameterDeclaration>,
+    body: ts.Block | ts.Expression,
+    name?: ts.Identifier) {
+
+    let oldScope = this.scope;
+    this.scope = new VariableNumberingScope(true, oldScope);
+
+    if (name !== undefined) {
+      this.defineVariables(name);
+    }
+
+    for (let param of parameters) {
+      this.defineVariables(param.name);
+    }
+
+    let result;
+    if (ts.isBlock(body)) {
+      result = this.visitBlock(body);
+    } else {
+      result = this.visitExpression(body);
+    }
+
+    this.scope = oldScope;
+    return result;
+  }
+
+  /**
+   * Visits a function declaration node.
+   * @param node The function declaration node to visit.
+   */
+  private visitFunctionDeclaration(node: ts.FunctionDeclaration): ts.VisitResult<ts.Statement> {
+    // We need to be careful here because function declarations
+    // are actually variable definitions and assignments. If
+    // the variable visitor decides to rewrite a function
+    // declaration, then we need to rewrite it as an expression.
+    let defInitializer: ts.Expression = undefined;
+    let rewriteAssignment: ((assignment: ts.BinaryExpression) => ts.Expression) = undefined;
+    if (node.name) {
+      this.defineVariables(node.name);
+      let id = this.scope.getId(node.name);
+      defInitializer = this.visitDef(node.name, id);
+      rewriteAssignment = this.visitAssignment(node.name, id);
+    }
+
+    let body = this.visitFunctionBody(node.parameters, node.body);
+
+    if (defInitializer || rewriteAssignment) {
+      let funExpr = ts.createFunctionExpression(
+        node.modifiers,
+        node.asteriskToken,
+        undefined,
+        node.typeParameters,
+        node.parameters,
+        node.type,
+        body);
+
+      let funAssignment = ts.createAssignment(node.name, funExpr);
+
+      return [
+        ts.createVariableStatement(
+          [],
+          [ts.createVariableDeclaration(node.name, undefined, defInitializer)]),
+        ts.createStatement(rewriteAssignment ? rewriteAssignment(funAssignment) : funAssignment)
+      ];
+
+    } else {
+      return ts.updateFunctionDeclaration(
+        node,
+        node.decorators,
+        node.modifiers,
+        node.asteriskToken,
+        node.name,
+        node.typeParameters,
+        node.parameters,
+        node.type,
+        body);
+    }
+  }
+
+  /**
    * Creates a temporary variable name.
    */
-  private createTempVariable(): ts.Identifier {
+  protected createTemporary(): ts.Identifier {
     let result = ts.createTempVariable(undefined);
     this.scope.define(result);
     return result;
