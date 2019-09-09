@@ -1,0 +1,29 @@
+language: node_js
+
+# The following is a list of all versions of node we will test
+# the closure serializer on.
+node_js:
+  # Latest stable version of node.
+  - node
+  # Node v10.9.0 (same as GitLab CI config).
+  - 10.9.0
+  # Node v9 as some node APIs that we rely on behave differently on Node <10.
+  # See comments in serialize-closures/src/{builtins,serializedGraph}.ts.
+  - 9
+
+before_install:
+  # Install tsc, the TypeScript compiler.
+  - npm install -g typescript
+
+install:
+  # Install NPM packages.
+  - pushd serialize-closures; npm install; popd
+  - pushd ts-closure-transform; npm install; popd
+
+script:
+  # Build projects.
+  - pushd serialize-closures; tsc; popd
+  - pushd ts-closure-transform; tsc; popd
+  # Run the tests.
+  - pushd serialize-closures; npm test; popd
+  - pushd ts-closure-transform; npm test; popd

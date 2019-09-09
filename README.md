@@ -1,6 +1,7 @@
 [![License](https://img.shields.io/badge/License-BSD%203--Clause-blue.svg)](https://opensource.org/licenses/BSD-3-Clause)
 [![npm version](https://badge.fury.io/js/serialize-closures.svg)](https://badge.fury.io/js/serialize-closures)
 [![npm version](https://badge.fury.io/js/ts-closure-transform.svg)](https://badge.fury.io/js/ts-closure-transform)
+[![Build Status](https://travis-ci.org/nokia/ts-serialize-closures.svg?branch=master)](https://travis-ci.org/nokia/ts-serialize-closures)
 
 # ts-serialize-closures
 
