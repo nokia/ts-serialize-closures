@@ -15,3 +15,7 @@ clean:
 publish:
 	pushd serialize-closures; npm publish; popd
 	pushd ts-closure-transform; npm publish; popd
+
+publish-prerelease:
+	pushd serialize-closures; npm version prerelease --preid=next && npm publish; popd
+	pushd ts-closure-transform; npm version prerelease --preid=next && npm publish; popd
