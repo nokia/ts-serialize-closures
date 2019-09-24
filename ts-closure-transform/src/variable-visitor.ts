@@ -2,6 +2,33 @@ import * as ts from 'typescript';
 import { simplifyExpression, noAssignmentTokenMapping } from './simplify';
 
 /**
+ * Gets a node's emit flags.
+ * @param node A node to query.
+ */
+function getEmitFlags(node: ts.Node): ts.EmitFlags | undefined {
+  // NOTE: this is a hack that inspects the TypeScript compiler's internals.
+  // The reason we're resorting to this is that TypeScript does not export
+  // its version of `getEmitFlags`---it only exports `setEmitFlags`.
+  let castNode = node as ts.Node & { emitNode?: { flags: ts.EmitFlags } };
+  let emitNode = castNode.emitNode;
+  return emitNode && emitNode.flags;
+}
+
+/**
+ * Tells if an identifier is implicitly exported, i.e., if it should
+ * really be treated as an `exports.Id` expression as opposed to just `Id`.
+ * @param node An identifier to query.
+ */
+function isExportedName(node: ts.Identifier): boolean {
+  let flags = getEmitFlags(node);
+  if (flags) {
+    return (flags & ts.EmitFlags.ExportName) === ts.EmitFlags.ExportName;
+  } else {
+    return false;
+  }
+}
+
+/**
  * The type of a unique variable identifier.
  */
 export type VariableId = number;
@@ -140,7 +167,9 @@ export class VariableNumberingScope {
     if (name === undefined) {
 
     } else if (ts.isIdentifier(name)) {
-      this.define(name);
+      if (!isExportedName(name)) {
+        this.define(name);
+      }
     } else if (ts.isArrayBindingPattern(name)) {
       for (let elem of name.elements) {
         if (ts.isBindingElement(elem)) {
@@ -302,7 +331,8 @@ export abstract class VariableVisitor {
     else if (ts.isIdentifier(node)) {
       if (node.text !== "undefined"
         && node.text !== "null"
-        && node.text !== "arguments") {
+        && node.text !== "arguments"
+        && !isExportedName(node)) {
         return this.visitUse(node, this.scope.getId(node));
       } else {
         return node;
@@ -447,7 +477,7 @@ export abstract class VariableVisitor {
    */
   private visitBinaryExpression(node: ts.BinaryExpression): ts.Expression {
     let lhs = node.left;
-    if (ts.isIdentifier(lhs)) {
+    if (ts.isIdentifier(lhs) && !isExportedName(lhs)) {
       // Syntax we'd like to handle: identifier [+,-,*,/,...]= rhs;
       let id = this.scope.getId(lhs);
 
@@ -494,7 +524,7 @@ export abstract class VariableVisitor {
    * @param expression The expression to visit.
    */
   private visitPreUpdateExpression(expression: ts.PrefixUnaryExpression): ts.Expression {
-    if (ts.isIdentifier(expression.operand)) {
+    if (ts.isIdentifier(expression.operand) && !isExportedName(expression.operand)) {
       let id = this.scope.getId(expression.operand);
       let rewrite = this.visitAssignment(expression.operand, id);
       if (rewrite) {
@@ -523,7 +553,7 @@ export abstract class VariableVisitor {
    * @param expression The expression to visit.
    */
   private visitPostUpdateExpression(expression: ts.PostfixUnaryExpression): ts.Expression {
-    if (ts.isIdentifier(expression.operand)) {
+    if (ts.isIdentifier(expression.operand) && !isExportedName(expression.operand)) {
       let id = this.scope.getId(expression.operand);
       let rewrite = this.visitAssignment(expression.operand, id);
       if (rewrite) {
@@ -623,6 +653,10 @@ export abstract class VariableVisitor {
     let visitBinding = (name: ts.BindingName): ts.BindingName => {
 
       if (ts.isIdentifier(name)) {
+        if (isExportedName(name)) {
+          return name;
+        }
+
         let id = this.scope.getId(name);
         let init = this.visitDef(name, id);
         let rewrite = this.visitAssignment(name, id);
@@ -686,32 +720,34 @@ export abstract class VariableVisitor {
       // Visit the initializer expression.
       let initializer = this.visitExpression(decl.initializer);
       if (ts.isIdentifier(name)) {
-        // Simple initializations get special treatment because they
-        // don't need a special fix-up statement, even if they are
-        // rewritten.
-        let id = this.scope.getId(name);
-        let customInit = this.visitDef(name, id);
-        if (initializer) {
-          let rewrite = this.visitAssignment(name, id);
-          if (rewrite) {
-            fixups.push(
-              ts.createStatement(
-                rewrite(
+        if (!isExportedName(name)) {
+          // Simple initializations get special treatment because they
+          // don't need a special fix-up statement, even if they are
+          // rewritten.
+          let id = this.scope.getId(name);
+          let customInit = this.visitDef(name, id);
+          if (initializer) {
+            let rewrite = this.visitAssignment(name, id);
+            if (rewrite) {
+              fixups.push(
+                ts.createStatement(
+                  rewrite(
+                    ts.createAssignment(
+                      name,
+                      initializer))));
+              initializer = undefined;
+            }
+          }
+          if (customInit) {
+            if (initializer) {
+              fixups.push(
+                ts.createStatement(
                   ts.createAssignment(
                     name,
-                    initializer))));
-            initializer = undefined;
+                    initializer)));
+            }
+            initializer = customInit;
           }
-        }
-        if (customInit) {
-          if (initializer) {
-            fixups.push(
-              ts.createStatement(
-                ts.createAssignment(
-                  name,
-                  initializer)));
-          }
-          initializer = customInit;
         }
         declarations.push(
           ts.updateVariableDeclaration(
