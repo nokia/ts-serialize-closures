@@ -109,7 +109,10 @@ describe('Serialization', () => {
     let jsFileName = resolve(__dirname, `serialization/${fileName.substr(0, fileName.length - 3)}.js`);
     let compiledModule = require(jsFileName);
     for (let exportedTestName in compiledModule) {
-      it(`${fileName}:${exportedTestName}`, compiledModule[exportedTestName]);
+      let exportedTest = compiledModule[exportedTestName];
+      if (exportedTest instanceof Function) {
+        it(`${fileName}:${exportedTestName}`, exportedTest);
+      }
     }
   }
 });
