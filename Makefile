@@ -13,8 +13,8 @@ clean:
 	rm -rf ts-closure-transform/src/*.js
 
 publish:
-	pushd serialize-closures; npm publish; popd
-	pushd ts-closure-transform; npm publish; popd
+	pushd serialize-closures; npm version patch && npm publish; popd
+	pushd ts-closure-transform; npm version patch && npm publish; popd
 
 publish-prerelease:
 	pushd serialize-closures; npm version prerelease --preid=next && npm publish; popd
