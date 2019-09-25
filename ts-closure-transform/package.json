@@ -1,6 +1,6 @@
 {
   "name": "ts-closure-transform",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Rewrites functions to include a '__closure' property, suitable for function serialization.",
   "main": "dist/index.js",
   "typings": "dist/index.d.ts",
@@ -19,7 +19,9 @@
     "modules"
   ],
   "author": "Jonathan Van der Cruysse",
-  "contributors": [ "Lode Hoste <lode.hoste@nokia-bell-labs.com" ],
+  "contributors": [
+    "Lode Hoste <lode.hoste@nokia-bell-labs.com"
+  ],
   "license": "BSD-3-Clause",
   "bugs": {
     "url": "https://github.com/nokia/ts-serialize-closures/issues"
