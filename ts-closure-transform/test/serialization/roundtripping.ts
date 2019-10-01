@@ -18,6 +18,20 @@ export function roundTripClosure() {
   expect(roundtrip(factorial)(5)).to.equal(120);
 }
 
+export function roundTripHoistingClosure() {
+  let f = x => {
+    let a = 1;
+    let r = curriedAdd(x);
+    function curriedAdd(x) {
+      a + x
+    }
+    return r
+  };
+
+  let out = roundtrip(f);
+  expect(out(4)).to.equal(5);
+}
+
 export function roundTripNestedClosure() {
   let a = 10;
   let f = x => {
