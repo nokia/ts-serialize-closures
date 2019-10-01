@@ -1,6 +1,7 @@
 import { default as closureTransform } from './transform';
 import { default as flattenImports } from './flatten-destructured-imports';
 import { default as boxMutableSharedVariables } from './box-mutable-captured-vars';
+import { default as hoistFunctions } from './hoist-functions';
 import * as ts from 'typescript';
 
 type Transform = (ctx: ts.TransformationContext) => ts.Transformer<ts.SourceFile>;
@@ -40,6 +41,7 @@ export function beforeTransform(): Transform {
  */
 export function afterTransform(): Transform {
   return createPipeline([
+    hoistFunctions(),
     boxMutableSharedVariables(),
     closureTransform()
   ]);
