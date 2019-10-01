@@ -25,6 +25,26 @@ import * as ts from 'typescript';
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
+/**
+ * Tells if a variable declaration list's declared variables are (implicitly) hoisted.
+ *
+ * `let` and `const` declarations are not hoisted: variables declared by
+ * these keywords cannot be accessed until they are declared. Consequently,
+ * earlier uses of `let`/`const` variables must refer to some other variable
+ * declared in an enclosing scope.
+ *
+ * `var` declarations, on the other hand, are hoisted. This means that
+ * that earlier uses in this scope of names declared by a `var` declaration
+ * actually refer to said declaration.
+ *
+ * @param node A variable declaration list to inspect.
+ */
+function isHoistedDeclaration(node: ts.VariableDeclarationList) {
+  let isNotHoisted = (node.flags & ts.NodeFlags.Let) == ts.NodeFlags.Let
+    || (node.flags & ts.NodeFlags.Const) == ts.NodeFlags.Const;
+
+  return !isNotHoisted;
+}
 
 /**
  * A lexical scope data structure that keeps track of captured variables.
@@ -374,13 +394,18 @@ function visitor(ctx: ts.TransformationContext) {
           node.name,
           recurse(node.initializer));
       } else if (ts.isVariableDeclarationList(node)) {
-        let isNotHoisted = (node.flags & ts.NodeFlags.Let) == ts.NodeFlags.Let
-          || (node.flags & ts.NodeFlags.Const) == ts.NodeFlags.Const;
+        // Before we visit the individual variable declarations, we want to take
+        // a moment to tell whether those variable declarations are implicitly
+        // hoisted or not.
+        let isHoisted = isHoistedDeclaration(node);
+
+        // Now visit the individual declarations...
         let newDeclarations = [];
         for (let declaration of node.declarations) {
-          visitDeclaration(declaration.name, captured, !isNotHoisted);
+          visitDeclaration(declaration.name, captured, isHoisted);
           newDeclarations.push(ts.visitEachChild(declaration, visitor(captured), ctx));
         }
+        // ...and update the declaration list.
         return ts.updateVariableDeclarationList(node, newDeclarations);
       } else if (ts.isVariableDeclaration(node)) {
         visitDeclaration(node.name, captured, false);
