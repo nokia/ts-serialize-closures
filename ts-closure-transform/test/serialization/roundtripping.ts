@@ -23,12 +23,25 @@ export function roundTripHoistingClosure() {
     let a = 1;
     let r = curriedAdd(x);
     function curriedAdd(x) {
-      return a + x
+      return a + x;
     }
-    return r
+    return r;
   };
 
   let out = roundtrip(f);
+  expect(out(4)).to.equal(5);
+}
+
+export function roundTripHoistingClosure2() {
+  let f = () => {
+    let a = 1;
+    return curriedAdd;
+    function curriedAdd(x) {
+      return a + x;
+    }
+  };
+
+  let out = roundtrip(f());
   expect(out(4)).to.equal(5);
 }
 
