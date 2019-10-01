@@ -1,4 +1,8 @@
 var _a;
+function g() {
+    ++x.value;
+}
+g.__closure = () => ({ x });
 let x = { value: undefined };
 x.value = 10;
 let obj = { y: 42 };
@@ -9,7 +13,3 @@ let obj = { y: 42 };
         f();
     }
 }, _a.__closure = () => ({ obj, console }), _a)();
-function g() {
-    ++x.value;
-}
-g.__closure = () => ({ x });

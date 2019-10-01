@@ -25,6 +25,26 @@ import * as ts from 'typescript';
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
+/**
+ * Tells if a variable declaration list's declared variables are (implicitly) hoisted.
+ *
+ * `let` and `const` declarations are not hoisted: variables declared by
+ * these keywords cannot be accessed until they are declared. Consequently,
+ * earlier uses of `let`/`const` variables must refer to some other variable
+ * declared in an enclosing scope.
+ *
+ * `var` declarations, on the other hand, are hoisted. This means that
+ * that earlier uses in this scope of names declared by a `var` declaration
+ * actually refer to said declaration.
+ *
+ * @param node A variable declaration list to inspect.
+ */
+function isHoistedDeclaration(node: ts.VariableDeclarationList) {
+  let isNotHoisted = (node.flags & ts.NodeFlags.Let) == ts.NodeFlags.Let
+    || (node.flags & ts.NodeFlags.Const) == ts.NodeFlags.Const;
+
+  return !isNotHoisted;
+}
 
 /**
  * A lexical scope data structure that keeps track of captured variables.
@@ -94,13 +114,23 @@ class CapturedVariableScope {
    * Hints that the variable with the given name is
    * declared by this scope in the chain.
    * @param name The name to declare.
+   * @param isHoisted Tells if the variable is hoisted to the top of this scope.
    */
-  declare(name: ts.Identifier): void {
+  declare(name: ts.Identifier, isHoisted: boolean): void {
     if (this.isDeclared(name)) {
       return;
     }
 
     this.declared.push(name.text);
+    if (isHoisted) {
+      // If the declaration is hoisted, then the uses we encountered previously
+      // did not actually capture any external variables. We should delete them.
+      let index = this.usedNames.indexOf(name.text);
+      if (index >= 0) {
+        this.usedNames.splice(index, 1);
+        this.used.splice(index, 1);
+      }
+    }
   }
 
   /**
@@ -215,13 +245,13 @@ function visitor(ctx: ts.TransformationContext) {
 
     // Declare the function expression's name.
     if (node.name) {
-      parentChain.declare(node.name);
-      chain.declare(node.name);
+      parentChain.declare(node.name, false);
+      chain.declare(node.name, false);
     }
 
     // Declare the function declaration's parameters.
     for (let param of node.parameters) {
-      visitDeclaration(param.name, chain);
+      visitDeclaration(param.name, chain, false);
     }
 
     // Visit the lambda and extract captured symbols.
@@ -245,13 +275,13 @@ function visitor(ctx: ts.TransformationContext) {
 
     // Declare the function declaration's name.
     if (node.name) {
-      parentChain.declare(node.name);
-      chain.declare(node.name);
+      parentChain.declare(node.name, true);
+      chain.declare(node.name, true);
     }
 
     // Declare the function declaration's parameters.
     for (let param of node.parameters) {
-      visitDeclaration(param.name, chain);
+      visitDeclaration(param.name, chain, false);
     }
 
     // Visit the function and extract captured symbols.
@@ -308,10 +338,10 @@ function visitor(ctx: ts.TransformationContext) {
     return { visited, captured: chain.captured }
   }
 
-  function visitDeclaration(declaration: ts.Node, captured: CapturedVariableScope) {
+  function visitDeclaration(declaration: ts.Node, captured: CapturedVariableScope, isHoisted: boolean) {
     function visit(node: ts.Node): ts.VisitResult<ts.Node> {
       if (ts.isIdentifier(node)) {
-        captured.declare(node);
+        captured.declare(node, isHoisted);
         return node;
       } else {
         return ts.visitEachChild(node, visit, ctx);
@@ -363,8 +393,23 @@ function visitor(ctx: ts.TransformationContext) {
           node,
           node.name,
           recurse(node.initializer));
+      } else if (ts.isVariableDeclarationList(node)) {
+        // Before we visit the individual variable declarations, we want to take
+        // a moment to tell whether those variable declarations are implicitly
+        // hoisted or not.
+        let isHoisted = isHoistedDeclaration(node);
+
+        // Now visit the individual declarations...
+        let newDeclarations = [];
+        for (let declaration of node.declarations) {
+          // ...making sure that we take their hoisted-ness into account.
+          visitDeclaration(declaration.name, captured, isHoisted);
+          newDeclarations.push(ts.visitEachChild(declaration, visitor(captured), ctx));
+        }
+        // Finally, update the declaration list.
+        return ts.updateVariableDeclarationList(node, newDeclarations);
       } else if (ts.isVariableDeclaration(node)) {
-        visitDeclaration(node.name, captured);
+        visitDeclaration(node.name, captured, false);
         return ts.visitEachChild(node, visitor(captured), ctx);
       } else if (ts.isArrowFunction(node) || ts.isFunctionExpression(node)) {
         return transformLambda(node, captured);
