@@ -94,13 +94,23 @@ class CapturedVariableScope {
    * Hints that the variable with the given name is
    * declared by this scope in the chain.
    * @param name The name to declare.
+   * @param isHoisted Tells if the variable is hoisted to the top of this scope.
    */
-  declare(name: ts.Identifier): void {
+  declare(name: ts.Identifier, isHoisted: boolean): void {
     if (this.isDeclared(name)) {
       return;
     }
 
     this.declared.push(name.text);
+    if (isHoisted) {
+      // If the declaration is hoisted, then the uses we encountered previously
+      // did not actually capture any external variables. We should delete them.
+      let index = this.usedNames.indexOf(name.text);
+      if (index >= 0) {
+        this.usedNames.splice(index, 1);
+        this.used.splice(index, 1);
+      }
+    }
   }
 
   /**
@@ -215,13 +225,13 @@ function visitor(ctx: ts.TransformationContext) {
 
     // Declare the function expression's name.
     if (node.name) {
-      parentChain.declare(node.name);
-      chain.declare(node.name);
+      parentChain.declare(node.name, false);
+      chain.declare(node.name, false);
     }
 
     // Declare the function declaration's parameters.
     for (let param of node.parameters) {
-      visitDeclaration(param.name, chain);
+      visitDeclaration(param.name, chain, false);
     }
 
     // Visit the lambda and extract captured symbols.
@@ -245,13 +255,13 @@ function visitor(ctx: ts.TransformationContext) {
 
     // Declare the function declaration's name.
     if (node.name) {
-      parentChain.declare(node.name);
-      chain.declare(node.name);
+      parentChain.declare(node.name, true);
+      chain.declare(node.name, true);
     }
 
     // Declare the function declaration's parameters.
     for (let param of node.parameters) {
-      visitDeclaration(param.name, chain);
+      visitDeclaration(param.name, chain, false);
     }
 
     // Visit the function and extract captured symbols.
@@ -308,10 +318,10 @@ function visitor(ctx: ts.TransformationContext) {
     return { visited, captured: chain.captured }
   }
 
-  function visitDeclaration(declaration: ts.Node, captured: CapturedVariableScope) {
+  function visitDeclaration(declaration: ts.Node, captured: CapturedVariableScope, isHoisted: boolean) {
     function visit(node: ts.Node): ts.VisitResult<ts.Node> {
       if (ts.isIdentifier(node)) {
-        captured.declare(node);
+        captured.declare(node, isHoisted);
         return node;
       } else {
         return ts.visitEachChild(node, visit, ctx);
@@ -363,8 +373,17 @@ function visitor(ctx: ts.TransformationContext) {
           node,
           node.name,
           recurse(node.initializer));
+      } else if (ts.isVariableDeclarationList(node)) {
+        let isNotHoisted = (node.flags & ts.NodeFlags.Let) == ts.NodeFlags.Let
+          || (node.flags & ts.NodeFlags.Const) == ts.NodeFlags.Const;
+        let newDeclarations = [];
+        for (let declaration of node.declarations) {
+          visitDeclaration(declaration.name, captured, !isNotHoisted);
+          newDeclarations.push(ts.visitEachChild(declaration, visitor(captured), ctx));
+        }
+        return ts.updateVariableDeclarationList(node, newDeclarations);
       } else if (ts.isVariableDeclaration(node)) {
-        visitDeclaration(node.name, captured);
+        visitDeclaration(node.name, captured, false);
         return ts.visitEachChild(node, visitor(captured), ctx);
       } else if (ts.isArrowFunction(node) || ts.isFunctionExpression(node)) {
         return transformLambda(node, captured);
