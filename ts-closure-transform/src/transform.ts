@@ -402,10 +402,11 @@ function visitor(ctx: ts.TransformationContext) {
         // Now visit the individual declarations...
         let newDeclarations = [];
         for (let declaration of node.declarations) {
+          // ...making sure that we take their hoisted-ness into account.
           visitDeclaration(declaration.name, captured, isHoisted);
           newDeclarations.push(ts.visitEachChild(declaration, visitor(captured), ctx));
         }
-        // ...and update the declaration list.
+        // Finally, update the declaration list.
         return ts.updateVariableDeclarationList(node, newDeclarations);
       } else if (ts.isVariableDeclaration(node)) {
         visitDeclaration(node.name, captured, false);
