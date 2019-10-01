@@ -17,13 +17,13 @@ before_install:
 
 install:
   # Install NPM packages.
-  - pushd serialize-closures; npm install; popd
-  - pushd ts-closure-transform; npm install; popd
+  - pushd serialize-closures && npm install && popd
+  - pushd ts-closure-transform && npm install && popd
 
 script:
   # Build projects.
-  - pushd serialize-closures; tsc; popd
-  - pushd ts-closure-transform; tsc; popd
+  - pushd serialize-closures && tsc && popd
+  - pushd ts-closure-transform && tsc && popd
   # Run the tests.
-  - pushd serialize-closures; npm test; popd
-  - pushd ts-closure-transform; npm test; popd
+  - pushd serialize-closures && npm test && popd
+  - pushd ts-closure-transform && npm test && popd
