@@ -6,6 +6,10 @@ all:
 	pushd serialize-closures; npm run build; popd
 	pushd ts-closure-transform; npm run build; popd
 
+test:
+	pushd serialize-closures; npm test; popd
+	pushd ts-closure-transform; npm test; popd
+
 clean:
 	rm -rf serialize-closures/dist
 	rm -rf ts-closure-transform/dist
