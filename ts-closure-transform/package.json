@@ -5,6 +5,7 @@
   "main": "dist/index.js",
   "typings": "dist/index.d.ts",
   "scripts": {
+    "build": "tsc",
     "test": "mocha --inspect=9228 --compilers ts:ts-node/register",
     "test2": "rm -rf test/fixture/*.js && mocha --compilers ts:ts-node/register",
     "prepublish": "tsc"

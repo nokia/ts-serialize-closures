@@ -3,8 +3,8 @@ SHELL := /bin/bash
 .PHONY: all clean publish
 
 all:
-	pushd serialize-closures; tsc; popd
-	pushd ts-closure-transform; tsc; popd
+	pushd serialize-closures; npm run build; popd
+	pushd ts-closure-transform; npm run build; popd
 
 clean:
 	rm -rf serialize-closures/dist
