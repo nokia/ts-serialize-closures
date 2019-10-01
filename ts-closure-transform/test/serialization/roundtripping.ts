@@ -23,7 +23,7 @@ export function roundTripHoistingClosure() {
     let a = 1;
     let r = curriedAdd(x);
     function curriedAdd(x) {
-      a + x
+      return a + x
     }
     return r
   };
