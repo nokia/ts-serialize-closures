@@ -18,3 +18,5 @@ export class Person {
 export function formatPerson(name: string, email: string) {
   return new Person(name, email).toString();
 }
+
+export default Person
