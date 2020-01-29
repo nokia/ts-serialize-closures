@@ -93,15 +93,27 @@ function createVisitor(ctx: ts.TransformationContext): ts.Visitor {
       if (ts.isImportDeclaration(node)) {
         let clause = node.importClause;
         if (clause) {
+          // Create a temporary name for the imported module.
+          let temp = ts.createTempVariable(undefined);
+          // Bind each import to a variable.
+          let importBindings = [];
+
+          if (clause.name) {
+            // Process the default import statement
+            importBindings.push(
+              ts.createVariableStatement(
+                [],
+                [
+                  ts.createVariableDeclaration(
+                    clause.name,
+                    undefined,
+                    ts.createPropertyAccess(temp, "default"))
+                ]));
+            modifiedSet.push(clause.name.text);
+          }
           let bindings = clause.namedBindings;
-          if (ts.isNamedImports(bindings)) {
+          if (bindings && ts.isNamedImports(bindings)) {
             // Named imports. That's exactly what we're looking for.
-
-            // Create a temporary name for the imported module.
-            let temp = ts.createTempVariable(undefined);
-
-            // Bind each import to a variable.
-            let importBindings = [];
             for (let specifier of bindings.elements) {
               importBindings.push(
                 ts.createVariableStatement(
@@ -114,20 +126,19 @@ function createVisitor(ctx: ts.TransformationContext): ts.Visitor {
                   ]));
               modifiedSet.push(specifier.name.text);
             }
-
-            return [
-              ts.updateImportDeclaration(
-                node,
-                node.decorators,
-                node.modifiers,
-                ts.updateImportClause(
-                  clause,
-                  clause.name,
-                  ts.createNamespaceImport(temp)),
-                node.moduleSpecifier),
-              ...importBindings
-            ];
           }
+          return [
+            ts.updateImportDeclaration(
+              node,
+              node.decorators,
+              node.modifiers,
+              ts.updateImportClause(
+                clause,
+                clause.name,
+                ts.createNamespaceImport(temp)),
+              node.moduleSpecifier),
+            ...importBindings
+          ];
         }
         return ts.visitEachChild(node, visit, ctx);
       } else {
