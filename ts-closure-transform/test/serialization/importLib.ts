@@ -2,6 +2,7 @@
 import { expect } from 'chai';
 import { Person, formatPerson } from '../lib';
 import PersonDefaultImport from "../lib"
+import PersonDefaultEqualsImport = require("../lib")
 import { deserialize, serialize } from '../../../serialize-closures/src';
 
 function roundtrip<T>(value: T): T {
@@ -22,8 +23,14 @@ export function callImportTest2() {
     .to.equal(formatPerson(name, email).toString());
 }
 
-export function callImportTest3() {
+export function callDefaultImportTest() {
   let originalCreate = () => PersonDefaultImport.create(name, email);
+  let create = roundtrip(originalCreate);
+  expect(create().toString()).to.equal(originalCreate().toString());
+}
+
+export function callDefaultEqualsImportTest() {
+  let originalCreate = () => PersonDefaultEqualsImport.Person.create(name, email);
   let create = roundtrip(originalCreate);
   expect(create().toString()).to.equal(originalCreate().toString());
 }
