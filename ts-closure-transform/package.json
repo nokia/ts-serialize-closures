@@ -1,6 +1,6 @@
 {
   "name": "ts-closure-transform",
-  "version": "0.1.2",
+  "version": "0.1.4",
   "description": "Rewrites functions to include a '__closure' property, suitable for function serialization.",
   "main": "dist/index.js",
   "typings": "dist/index.d.ts",
