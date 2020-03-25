@@ -112,6 +112,18 @@ function createVisitor(ctx: ts.TransformationContext): ts.Visitor {
             modifiedSet.push(clause.name.text);
           }
           let bindings = clause.namedBindings;
+          if (bindings && ts.isNamespaceImport(bindings)) {
+            importBindings.push(
+              ts.createVariableStatement(
+                [],
+                [
+                  ts.createVariableDeclaration(
+                    bindings.name,
+                    undefined,
+                    temp)
+                ]));
+            modifiedSet.push(bindings.name.text);
+          }
           if (bindings && ts.isNamedImports(bindings)) {
             // Named imports. That's exactly what we're looking for.
             for (let specifier of bindings.elements) {
