@@ -986,7 +986,7 @@ export abstract class VariableVisitor {
    * Creates a temporary variable name.
    */
   protected createTemporary(): ts.Identifier {
-    let result = ts.createTempVariable(undefined);
+    let result = ts.createUniqueName("_tct_variable_visitor");
     this.scope.define(result);
     return result;
   }

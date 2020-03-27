@@ -1,7 +1,7 @@
-var _a;
+var _tct_transform_1;
 let closureArrowA = 10;
 let closureArrowB = 20;
-let closureArrow = (_a = x => {
+let closureArrow = (_tct_transform_1 = x => {
     let y = x;
     return closureArrowA + y * x;
-}, _a.__closure = () => ({ closureArrowA }), _a);
+}, _tct_transform_1.__closure = () => ({ closureArrowA }), _tct_transform_1);

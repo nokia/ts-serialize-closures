@@ -211,7 +211,7 @@ function addClosurePropertyToLambda(
 
   // If we do have captured variables, then we'll
   // construct a closure property.
-  let temp = ts.createTempVariable(undefined);
+  let temp = ts.createUniqueName("_tct_transform");
   ctx.hoistVariableDeclaration(temp);
 
   // Use the comma operator to create an expression that looks

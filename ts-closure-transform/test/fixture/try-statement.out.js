@@ -1,10 +1,10 @@
-var _a;
+var _tct_transform_1;
 let e = { value: undefined };
 e.value = 10;
-let f = (_a = function () {
+let f = (_tct_transform_1 = function () {
     ++e.value;
     return e.value;
-}, _a.__closure = () => ({ e }), _a);
+}, _tct_transform_1.__closure = () => ({ e }), _tct_transform_1);
 try {
 }
 catch (e) {

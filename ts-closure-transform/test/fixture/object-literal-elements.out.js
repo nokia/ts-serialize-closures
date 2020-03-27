@@ -5,12 +5,12 @@ let objLiteral = {
     set content(value) {
     },
     value: function getValue() {
-        var _a;
+        var _tct_transform_1;
         var content = { value: undefined };
         content.value = this.content;
-        content.value = (_a = function () {
+        content.value = (_tct_transform_1 = function () {
             return content.value();
-        }, _a.__closure = () => ({ content }), _a);
+        }, _tct_transform_1.__closure = () => ({ content }), _tct_transform_1);
         return content.value();
     },
     getValue() {

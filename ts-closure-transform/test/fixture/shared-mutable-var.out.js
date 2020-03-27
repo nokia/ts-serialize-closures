@@ -1,9 +1,9 @@
-var _a, _b;
+var _tct_transform_1, _tct_transform_2;
 function createCounter() {
     let count = { value: undefined };
     count.value = 0;
     return {
-        get: (_a = () => count.value, _a.__closure = () => ({ count }), _a),
-        increment: (_b = () => { ++count.value; }, _b.__closure = () => ({ count }), _b)
+        get: (_tct_transform_1 = () => count.value, _tct_transform_1.__closure = () => ({ count }), _tct_transform_1),
+        increment: (_tct_transform_2 = () => { ++count.value; }, _tct_transform_2.__closure = () => ({ count }), _tct_transform_2)
     };
 }

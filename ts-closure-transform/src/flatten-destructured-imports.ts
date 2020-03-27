@@ -94,7 +94,7 @@ function createVisitor(ctx: ts.TransformationContext): ts.Visitor {
         let clause = node.importClause;
         if (clause) {
           // Create a temporary name for the imported module.
-          let temp = ts.createTempVariable(undefined);
+          let temp = ts.createUniqueName("_tct_flatten_destructured_imports");
           // Bind each import to a variable.
           let importBindings = [];
 

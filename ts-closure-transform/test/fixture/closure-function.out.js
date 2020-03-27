@@ -1,6 +1,6 @@
-var _a;
+var _tct_transform_1;
 let closureFunctionA = 10;
 let closureFunctionB = 20;
-let closureFunction = (_a = function () {
+let closureFunction = (_tct_transform_1 = function () {
     return closureFunctionA + closureFunctionB;
-}, _a.__closure = () => ({ closureFunctionA, closureFunctionB }), _a);
+}, _tct_transform_1.__closure = () => ({ closureFunctionA, closureFunctionB }), _tct_transform_1);
