@@ -34,6 +34,7 @@ export const rootBuiltinNames: ReadonlyArray<string> = [
 
   // # Numbers and dates
   'Number',
+  'BigInt',
   'Math',
   'Date',
 
@@ -52,6 +53,8 @@ export const rootBuiltinNames: ReadonlyArray<string> = [
   'Uint32Array',
   'Float32Array',
   'Float64Array',
+  'BigInt64Array',
+  'BigUint64Array',
 
   // # Keyed collections
   'Map',
