@@ -154,7 +154,7 @@ function createClosureLambda(capturedVariables: ReadonlyArray<ts.Identifier>) {
   //
   // where a, b, ... is the list of captured variables.
   //
-  // First step: create the object literal returned by the lamba.
+  // First step: create the object literal returned by the lambda.
   let objLiteralElements: ts.ObjectLiteralElementLike[] = [];
 
   for (let variable of capturedVariables) {
