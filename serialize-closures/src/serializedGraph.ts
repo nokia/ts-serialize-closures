@@ -117,6 +117,12 @@ export class SerializedGraph {
    */
   private serializeFunction(value: Function): any {
     let closure = (<any>value).__closure;
+    if ((<any>value).__impl) {
+      // To serialize functions that have been deserialized earlier,
+      // we must reuse the __impl source. This is OK because functions are immutable
+      value = (<any>value).__impl;
+      closure = (<any>value).__closure;
+    }
     if (!closure) {
       closure = () => ({});
     }
@@ -315,13 +321,25 @@ export class SerializedGraph {
       // time, function implementations are immutable.
       // To get around that, we'll use a dirty little hack: create
       // a thunk that calls a property of itself.
-      let thunk = function () {
-        return (<any>thunk).__impl.apply(this, arguments);
-      }
-      this.indexMap.push({ element: thunk, index: valueIndex });
+
+      // let thunk = function () {
+      //     return (<any>thunk).__impl.apply(this, arguments);
+      //   }
+      //   this.indexMap.push({ element: thunk, index: valueIndex });
+
+      // TODO: Temporary fix for bug in createClosureLambda (Part 1)
+      //       Synthesized variables to do map to literal properties
+      var thunkObj = { __thunk: undefined };
+      thunkObj.__thunk = function () {
+        return (<any>thunkObj.__thunk).__impl.apply(this, arguments);
+      }//.bind(thunkObj)
+      this.indexMap.push({ element: thunkObj.__thunk, index: valueIndex });
 
       // Synthesize a snippet of code we can evaluate.
-      let deserializedClosure = this.get(value.closure);
+      // TODO: Temporary fix for bug in createClosureLambda (Part 2)
+      //       Synthesized variables to do map to literal properties
+      //       Should be 'let deserializedClosure'
+      var deserializedClosure = this.get(value.closure);
       let capturedVarKeys = [];
       let capturedVarVals = [];
       for (let key in deserializedClosure) {
@@ -336,13 +354,22 @@ export class SerializedGraph {
       // Evaluate the code.
       let impl = this.evalInThisContext(code).apply(undefined, capturedVarVals);
       impl.prototype = this.get(value.prototype);
+      impl.__closure = () => deserializedClosure;
 
       // Patch the thunk.
-      (<any>thunk).__impl = impl;
-      (<any>thunk).prototype = impl.prototype;
-      this.deserializeProperties(value, thunk);
+      // (<any>thunk).__impl = impl;
+      // (<any>thunk).prototype = impl.prototype;
+      // this.deserializeProperties(value, thunk);
 
-      return thunk;
+      // return thunk;
+
+      // TODO: Temporary fix for bug in createClosureLambda (Part 3)
+      //       Synthesized variables to do map to literal properties
+      (<any>thunkObj.__thunk).__impl = impl;
+      (<any>thunkObj.__thunk).prototype = impl.prototype;
+      this.deserializeProperties(value, thunkObj.__thunk);
+
+      return thunkObj.__thunk;
     } else if (value.kind === 'builtin') {
       let builtin = getBuiltinByName(value.name, this.builtins);
       if (builtin === undefined) {

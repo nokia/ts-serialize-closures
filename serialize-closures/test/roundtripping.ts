@@ -60,6 +60,12 @@ describe('Roundtripping', () => {
     expect(roundtrip(f)(42)).to.equal(52);
   });
 
+  it("can round-trip recursive functions", function () {
+    let f: any = function (x) { return x < 5 ? f(x + 1) : x; };
+    f.__closure = function () { return ({ f }); };
+    expect(roundtrip(f)(1)).to.equal(5);
+  });
+
   it("can round-trip builtins", () => {
     expectRoundtrip(Math);
   });
