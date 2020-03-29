@@ -369,6 +369,8 @@ function visitor(ctx: ts.TransformationContext) {
             captured.use(node);
         }
         return node;
+      } else if (ts.isAccessor(node)) {
+        throw new Error(`Serializing accessors is not yet supported: '${node.name.getFullText()}'`)
       } else if (ts.isTypeNode(node)) {
         // Don't visit type nodes.
         return node;
