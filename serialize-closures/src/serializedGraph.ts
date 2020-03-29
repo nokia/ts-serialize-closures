@@ -328,6 +328,9 @@ export class SerializedGraph {
         capturedVarKeys.push(key);
         capturedVarVals.push(deserializedClosure[key]);
       }
+      if (value.source.endsWith(["{ [native code] }"])) {
+        throw new Error(`Cannot serialize native code '${value}'`)
+      }
       let code = `(function(${capturedVarKeys.join(", ")}) { return (${value.source}); })`;
 
       // Evaluate the code.
