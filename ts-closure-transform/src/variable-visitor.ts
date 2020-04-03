@@ -564,8 +564,9 @@ export abstract class VariableVisitor {
           ? ts.createAdd(secondUse, ts.createLiteral(1))
           : ts.createSubtract(secondUse, ts.createLiteral(1));
 
-        if (ts.isExpressionStatement(expression.parent)
-          || ts.isForStatement(expression.parent)) {
+        if (expression.parent &&
+          (ts.isExpressionStatement(expression.parent)
+            || ts.isForStatement(expression.parent))) {
           // If the postfix update's parent is an expression statement or a
           // 'for' statement then we don't need an extra variable.
           return simplifyExpression(
