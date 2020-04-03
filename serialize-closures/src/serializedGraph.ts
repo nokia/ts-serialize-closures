@@ -2,6 +2,10 @@ import { types, isFunction, isArray, isPrimitive, isDate, isRegExp } from "util"
 import { getNameOfBuiltin, getBuiltinByName, BuiltinList, defaultBuiltins, generateDefaultBuiltins } from "./builtins";
 import { retrieveCustomSerializer, CustomSerializerList, defaultCustoms, retrieveCustomDeserializer, CustomDeserializerList } from "./customs";
 
+export interface ValueFlags {
+  accessor?: "get" | "set"
+};
+
 /**
  * Represents a graph of serialized values.
  */
@@ -95,7 +99,7 @@ export class SerializedGraph {
    * in the content array.
    * @param value The value to add.
    */
-  private add(value: any): number {
+  private add(value: any, flags?: ValueFlags): number {
     // If the value is already in the graph, then we don't
     // need to serialize it.
     for (let { element, index } of this.indexMap) {
@@ -107,8 +111,32 @@ export class SerializedGraph {
     let index = this.contentArray.length;
     this.contentArray.push(undefined);
     this.indexMap.push({ element: value, index });
-    this.contentArray[index] = this.serialize(value);
+    this.contentArray[index] = this.serialize(value, flags);
     return index;
+  }
+
+  /**
+   * Serializes an accessor function.
+   * @param value The function to serialize.
+   */
+  private serializeAccessorFunction(value: Function, kind: "get" | "set"): any {
+    let result = this.serializeFunction(value)
+    // Applying value.toString() on an accessor function can generate an invalid expression in two cases:
+    // 1) named accessors: eliminate the `get` or `set` prefix.
+    // 2) function application `()` in function name
+    if (value.name.startsWith(kind + ' ')) {
+      let source = "function " + value.toString().substring(4)
+      result = Object.assign({}, result, {
+        source
+      })
+    }
+    if (result.source.startsWith(kind + '(')) {
+      let source = "function " + value.toString().substring(3)
+      result = Object.assign({}, result, {
+        source
+      })
+    }
+    return result;
   }
 
   /**
@@ -126,9 +154,10 @@ export class SerializedGraph {
     if (!closure) {
       closure = () => ({});
     }
+    let source = value.toString()
     let result = {
       'kind': 'function',
-      'source': value.toString(),
+      'source': source,
       'closure': this.add(closure()),
       'prototype': this.add(value.prototype)
     };
@@ -178,10 +207,10 @@ export class SerializedGraph {
         // Fancy property. We'll emit a description for it.
         let serializedDesc: any = {};
         if (desc.get) {
-          serializedDesc.get = this.add(desc.get);
+          serializedDesc.get = this.add(desc.get, { accessor: 'get' });
         }
         if (desc.set) {
-          serializedDesc.set = this.add(desc.set);
+          serializedDesc.set = this.add(desc.set, { accessor: 'set' });
         }
         if ('value' in desc) {
           serializedDesc.value = this.add(desc.value);
@@ -204,7 +233,7 @@ export class SerializedGraph {
    * that contains a closure.
    * @param value The value to serialize.
    */
-  private serialize(value: any): any {
+  private serialize(value: any, flags?: ValueFlags): any {
     // Check if the value requires a custom serializer
     let customSerializer = retrieveCustomSerializer(value, this.customSerializers)
     if (customSerializer !== undefined) {
@@ -235,7 +264,11 @@ export class SerializedGraph {
         'refs': value.map(v => this.add(v))
       };
     } else if (isFunction(value)) {
-      return this.serializeFunction(value);
+      if (flags && flags.accessor) {
+        return this.serializeAccessorFunction(value, flags.accessor);
+      } else {
+        return this.serializeFunction(value);
+      }
     } else if (
       (types && types.isDate(value)) || // Node v10+
       (!types && isDate(value))) {      // Deprecated

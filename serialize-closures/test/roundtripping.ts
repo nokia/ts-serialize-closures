@@ -7,7 +7,7 @@ describe('Roundtripping', () => {
   function roundtrip(value, builtins?: BuiltinList, customSerializers?: CustomSerializerList, customDeserializers?: CustomDeserializerList) {
     return deserialize(JSON.parse(JSON.stringify(serialize(value, builtins, customSerializers))), builtins, customDeserializers);
   }
-  
+
   function expectRoundtrip(value, builtins?: BuiltinList) {
     expect(roundtrip(value, builtins)).to.deep.equal(value);
   }
@@ -64,6 +64,22 @@ describe('Roundtripping', () => {
     let f: any = function (x) { return x < 5 ? f(x + 1) : x; };
     f.__closure = function () { return ({ f }); };
     expect(roundtrip(f)(1)).to.equal(5);
+  });
+
+  it("can round-trip accessors in objects", () => {
+    let obj = {
+      x: 'there',
+      get() { return this.x }
+    };
+    expect(roundtrip(obj).get()).to.equal('there');
+  });
+
+  it("can round-trip named accessors in objects", () => {
+    let obj = {
+      x: 'there',
+      get hi() { return this.x }
+    };
+    expect(roundtrip(obj).hi).to.equal('there');
   });
 
   it("can round-trip builtins", () => {
