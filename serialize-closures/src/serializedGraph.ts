@@ -155,6 +155,12 @@ export class SerializedGraph {
       closure = () => ({});
     }
     let source = value.toString()
+    if (source.endsWith("{ [native code] }")) {
+      throw new Error(`Cannot serialize native code. Value missing from builtin list? '${value}'`)
+    }
+    if (source.startsWith("class ")) {
+      throw new Error(`Cannot serialize classes. Value missing from builtin list? '${value}'`)
+    }
     let result = {
       'kind': 'function',
       'source': source,
@@ -365,7 +371,7 @@ export class SerializedGraph {
       var thunkObj = { __thunk: undefined };
       thunkObj.__thunk = function () {
         return (<any>thunkObj.__thunk).__impl.apply(this, arguments);
-      }//.bind(thunkObj)
+      }
       this.indexMap.push({ element: thunkObj.__thunk, index: valueIndex });
 
       // Synthesize a snippet of code we can evaluate.
@@ -378,9 +384,6 @@ export class SerializedGraph {
       for (let key in deserializedClosure) {
         capturedVarKeys.push(key);
         capturedVarVals.push(deserializedClosure[key]);
-      }
-      if (value.source.endsWith(["{ [native code] }"])) {
-        throw new Error(`Cannot serialize native code '${value}'`)
       }
       let code = `(function(${capturedVarKeys.join(", ")}) { return (${value.source}); })`;
 
