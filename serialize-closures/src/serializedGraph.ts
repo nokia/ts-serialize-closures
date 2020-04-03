@@ -381,10 +381,14 @@ export class SerializedGraph {
   private evalInThisContext(code: string) {
     // Ideally, we'd like to use a custom `eval` implementation.
     // Otherwise, `eval` will just have to do.
-    if (this.evalImpl) {
-      return this.evalImpl(code);
-    } else {
-      return eval(code);
+    try {
+      if (this.evalImpl) {
+        return this.evalImpl(code);
+      } else {
+        return eval(code);
+      }
+    } catch (e) {
+      throw new Error(`Failed to deserialize code: \`${code}\`: ${e}`)
     }
   }
 
