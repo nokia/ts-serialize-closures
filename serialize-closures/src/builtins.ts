@@ -102,8 +102,13 @@ export const rootBuiltinNames: ReadonlyArray<string> = [
   'escape',
   'unescape',
 
-  // # Extra addition: console
-  'console'
+  // # Extra additions: partial window / WorkerGlobalScope builtins
+  'console',
+  'clearInterval',
+  'clearTimeout',
+  'queueMicrotask',
+  'setInterval',
+  'setTimeout'
 ];
 
 /**
