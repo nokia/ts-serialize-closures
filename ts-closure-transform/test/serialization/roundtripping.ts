@@ -5,6 +5,26 @@ function roundtrip<T>(value: T): T {
   return deserialize(serialize(value));
 }
 
+export function roundTripObjectPropertyValueShorthand() {
+  let createPoint = (x, y) => {
+    return {
+      x,
+      y
+    }
+  }
+  expect(roundtrip(createPoint)(1, 2)).to.deep.equal({ x: 1, y: 2 });
+}
+
+export function roundTripObjectPropertyValueShorthand2() {
+  let f = v => {
+    let vs = []
+    vs.push({v});
+    return vs;
+  }
+  let f2 = roundtrip(f);
+  expect(f2(1)).to.deep.equal([{ v: 1 }]);
+}
+
 export function roundTripClosure() {
   let mul = (x, y) => x * y;
   let factorial = i => {

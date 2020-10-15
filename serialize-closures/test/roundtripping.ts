@@ -32,6 +32,11 @@ describe('Roundtripping', () => {
     expectRoundtrip({ 'hi': 'there' });
   });
 
+  it("can round-trip shorthand objects", () => {
+    let hi = 'hi';
+    expectRoundtrip({ hi });
+  });
+
   it("can round-trip class-like objects", () => {
     let obj = {};
     Object.defineProperty(obj, 'hi', { get: () => 'there' });
