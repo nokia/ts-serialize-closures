@@ -45,6 +45,20 @@ export function roundTripHoistingClosure2() {
   expect(out(4)).to.equal(5);
 }
 
+export function roundTripHoistingClosure3() {
+  let f = () => {
+    const a = 1;
+    const f = (v: number) => v + a
+    return curriedAdd;
+    function curriedAdd(x) {
+      return f(x);
+    }
+  };
+
+  let out = roundtrip(f());
+  expect(out(4)).to.equal(5);
+}
+
 export function roundTripNestedClosure() {
   let a = 10;
   let f = x => {
