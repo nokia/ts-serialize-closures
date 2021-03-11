@@ -1,6 +1,6 @@
 {
   "name": "serialize-closures",
-  "version": "0.2.6",
+  "version": "0.2.7",
   "description": "Serializes closures processed by the ts-closure-transform package.",
   "main": "dist/src/index.js",
   "typings": "dist/src/index.d.ts",
