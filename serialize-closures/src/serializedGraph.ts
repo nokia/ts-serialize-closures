@@ -151,9 +151,6 @@ export class SerializedGraph {
       value = (<any>value).__impl;
       closure = (<any>value).__closure;
     }
-    if (!closure) {
-      closure = () => ({});
-    }
     let source = value.toString()
     if (source.endsWith("{ [native code] }")) {
       throw new Error(`Cannot serialize native code. Value missing from builtin list? '${value}'`)
@@ -164,7 +161,7 @@ export class SerializedGraph {
     let result = {
       'kind': 'function',
       'source': source,
-      'closure': this.add(closure()),
+      'closure': this.add(closure ? closure() : undefined),
       'prototype': this.add(value.prototype)
     };
 
@@ -378,7 +375,7 @@ export class SerializedGraph {
       // TODO: Temporary fix for bug in createClosureLambda (Part 2)
       //       Synthesized variables to do map to literal properties
       //       Should be 'let deserializedClosure'
-      var deserializedClosure = this.get(value.closure);
+      var deserializedClosure = this.get(value.closure) || {};
       let capturedVarKeys = [];
       let capturedVarVals = [];
       for (let key in deserializedClosure) {
