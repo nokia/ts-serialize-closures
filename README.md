@@ -32,7 +32,7 @@ The serializer (`serialize-closures`) requires a preprocessing step (`ts-closure
 ```bash
 mkdir example && cd example
 npm init
-npm install --save-dev ts-closure-transform serialize-closures webpack webpack-cli typescript ts-loader
+npm install --save-dev ts-closure-transform serialize-closures webpack webpack-cli typescript ts-loader util
 ```
 
   2. Configure `webpack.config.js`:
@@ -40,6 +40,9 @@ npm install --save-dev ts-closure-transform serialize-closures webpack webpack-c
 const tsClosureTransform = require('ts-closure-transform');
 const path = require('path');
 module.exports = {
+  entry: {
+    example: './src/example.ts',
+  },
   module: {
     rules: [
       {
@@ -55,10 +58,14 @@ module.exports = {
     ]
   },
   resolve: {
-    extensions: [ '.tsx', '.ts', '.js' ]
+    extensions: [ '.tsx', '.ts', '.js' ],
+    fallback: {
+      "util": require.resolve("util/"),
+    },
   },
   output: {
-    path: path.join(__dirname, 'dist')
+    path: path.join(__dirname, 'dist'),
+    filename: '[name].bundle.js',
   }
 }
 ```
@@ -81,8 +88,8 @@ console.log(deserialize(parsed)());     // Prints '5'.
 
   4. Compile with webpack and run the sample
 ```bash
-./node_modules/.bin/webpack --mode=development src/test.ts -o dist/test.js
-node dist/test.js
+npx webpack
+node dist/example.bundle.js
 ```
 
 ## Components

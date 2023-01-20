@@ -3,6 +3,7 @@ const tsClosureTransform = require('ts-closure-transform');
 const path = require('path');
 module.exports = {
   devtool: 'inline-source-map',
+  mode: 'development',
   module: {
     rules: [
       {
@@ -18,9 +19,16 @@ module.exports = {
     ]
   },
   resolve: {
-    extensions: [ '.tsx', '.ts', '.js' ]
+    extensions: ['.tsx', '.ts', '.js'],
+    fallback: {
+      "util": require.resolve("util/"),
+    },
+  },
+  entry: {
+    example: './src/example.ts',
   },
   output: {
-    path: path.join(__dirname, 'dist')
+    path: path.join(__dirname, 'dist'),
+    filename: '[name].bundle.js'
   }
 };
