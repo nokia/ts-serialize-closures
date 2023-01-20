@@ -286,11 +286,6 @@ export class SerializedGraph {
         'kind': 'regex',
         'value': value.toString()
       };
-    } else if (types && types.isProxy(value)) {
-      return {
-        'kind': 'proxy',
-        'value': value
-      };
     } else {
       return this.serializeObject(value);
     }
