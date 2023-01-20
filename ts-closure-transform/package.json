@@ -6,8 +6,8 @@
   "typings": "dist/index.d.ts",
   "scripts": {
     "build": "tsc",
-    "test": "mocha --inspect=9228 --compilers ts:ts-node/register",
-    "test2": "rm -rf test/fixture/*.js && mocha --compilers ts:ts-node/register",
+    "test": "mocha --inspect=9228",
+    "test:clean": "rm -rf test/fixture/*.js && mocha",
     "prepublish": "tsc"
   },
   "repository": {
@@ -35,9 +35,8 @@
     "chai": "^3.5.0",
     "fs-extra": "^3.0.0",
     "glob": "^7.1.1",
-    "mocha": "^5.2.0",
+    "mocha": "^10.2.0",
     "ts-node": "^3.0.2",
     "typescript": "^2.7.0-rc"
-  },
-  "dependencies": {}
+  }
 }
