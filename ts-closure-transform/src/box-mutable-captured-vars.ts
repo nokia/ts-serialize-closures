@@ -168,7 +168,7 @@ class VariableBoxingVisitor extends VariableVisitor {
 
   protected visitUse(node: ts.Identifier, id: VariableId): ts.Expression {
     if (this.variablesToBox.indexOf(id) >= 0) {
-      return ts.createPropertyAccess(node, "value");
+      return ts.factory.createPropertyAccessExpression(node, "value");
     } else {
       return node;
     }
@@ -176,7 +176,7 @@ class VariableBoxingVisitor extends VariableVisitor {
 
   protected visitDef(node: ts.Identifier, id: VariableId): ts.Expression {
     if (this.variablesToBox.indexOf(id) >= 0) {
-      return ts.createObjectLiteral([ts.createPropertyAssignment("value", ts.createIdentifier("undefined"))]);
+      return ts.factory.createObjectLiteralExpression([ts.factory.createPropertyAssignment("value", ts.factory.createIdentifier("undefined"))]);
     } else {
       return undefined;
     }
@@ -184,11 +184,12 @@ class VariableBoxingVisitor extends VariableVisitor {
 
   protected visitAssignment(name: ts.Identifier, id: VariableId): (assignment: ts.BinaryExpression) => ts.Expression {
     if (this.variablesToBox.indexOf(id) >= 0) {
-      return assignment => ts.updateBinary(
+      return assignment => ts.factory.updateBinaryExpression(
         assignment,
-        ts.createPropertyAccess(name, "value"),
+        ts.factory.createPropertyAccessExpression(name, "value"),
+        assignment.operatorToken,
         assignment.right,
-        assignment.operatorToken);
+        );
     } else {
       return undefined;
     }
@@ -208,7 +209,7 @@ function createVisitor(ctx: ts.TransformationContext): ts.Visitor {
 }
 
 export default function () {
-  return (ctx: ts.TransformationContext): ts.Transformer<ts.SourceFile> => {
+  return (ctx: ts.TransformationContext): ts.Transformer<ts.Node> => {
     return (sf: ts.SourceFile) => ts.visitNode(sf, createVisitor(ctx));
   }
 }

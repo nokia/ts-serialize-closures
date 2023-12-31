@@ -15,11 +15,12 @@ export function simplify(node: ts.Node): ts.Node {
       // a <op>= b
 
       return simplify(
-        ts.updateBinary(
+        ts.factory.updateBinaryExpression(
           node,
           node.left,
+          ts.factory.createToken(assignmentTokenMapping[node.right.operatorToken.kind]),
           node.right.right,
-          ts.createToken(assignmentTokenMapping[node.right.operatorToken.kind])));
+          ));
     } else if (ts.isLiteralExpression(node.right)
       && node.right.text === '1') {
 
@@ -27,12 +28,12 @@ export function simplify(node: ts.Node): ts.Node {
         // a += 1
         // -->
         // ++a
-        return ts.createPrefix(ts.SyntaxKind.PlusPlusToken, node.left);
+        return ts.factory.createPrefixUnaryExpression(ts.SyntaxKind.PlusPlusToken, node.left);
       } else if (node.operatorToken.kind === ts.SyntaxKind.MinusEqualsToken) {
         // a -= 1
         // -->
         // --a
-        return ts.createPrefix(ts.SyntaxKind.MinusMinusToken, node.left);
+        return ts.factory.createPrefixUnaryExpression(ts.SyntaxKind.MinusMinusToken, node.left);
       }
     }
   }

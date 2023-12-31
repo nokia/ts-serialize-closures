@@ -159,17 +159,17 @@ function createClosureLambda(capturedVariables: ReadonlyArray<ts.Identifier>) {
 
   for (let variable of capturedVariables) {
     objLiteralElements.push(
-      ts.createShorthandPropertyAssignment(variable));
+      ts.factory.createShorthandPropertyAssignment(variable));
   }
 
   // Create the lambda itself.
-  return ts.createArrowFunction(
+  return ts.factory.createArrowFunction(
     [],
     [],
     [],
     undefined,
     undefined,
-    ts.createObjectLiteral(objLiteralElements));
+    ts.factory.createObjectLiteralExpression(objLiteralElements));
 }
 
 /**
@@ -184,8 +184,8 @@ function createClosurePropertyAssignment(
   closureFunction: ts.Expression,
   capturedVariables: ReadonlyArray<ts.Identifier>): ts.BinaryExpression {
 
-  return ts.createAssignment(
-    ts.createPropertyAccess(closureFunction, "__closure"),
+  return ts.factory.createAssignment(
+    ts.factory.createPropertyAccessExpression(closureFunction, "__closure"),
     createClosureLambda(capturedVariables));
 }
 
@@ -211,15 +211,15 @@ function addClosurePropertyToLambda(
 
   // If we do have captured variables, then we'll
   // construct a closure property.
-  let temp = ts.createUniqueName("_tct_transform");
+  let temp = ts.factory.createUniqueName("_tct_transform");
   ctx.hoistVariableDeclaration(temp);
 
   // Use the comma operator to create an expression that looks
   // like this:
   //
   // (temp = <lambda>, temp.__closure = () => { a, b, ... }, temp)
-  return ts.createCommaList([
-    ts.createAssignment(temp, lambda),
+  return ts.factory.createCommaListExpression([
+    ts.factory.createAssignment(temp, lambda),
     createClosurePropertyAssignment(temp, capturedVariables),
     temp
   ]);
@@ -290,9 +290,8 @@ function visitor(ctx: ts.TransformationContext) {
       chain,
       node);
 
-    let visitedFunc = ts.updateFunctionDeclaration(
+    let visitedFunc = ts.factory.updateFunctionDeclaration(
       node,
-      node.decorators,
       node.modifiers,
       node.asteriskToken,
       node.name,
@@ -375,21 +374,21 @@ function visitor(ctx: ts.TransformationContext) {
       } else if (ts.isPropertyAccessExpression(node)) {
         // Make sure we don't accidentally fool ourselves
         // into visiting property name identifiers.
-        return ts.updatePropertyAccess(
+        return ts.factory.updatePropertyAccessExpression(
           node,
           recurse(node.expression),
           node.name);
       } else if (ts.isQualifiedName(node)) {
         // Make sure we don't accidentally fool ourselves
         // into visiting the right-hand side of a qualified name.
-        return ts.updateQualifiedName(
+        return ts.factory.updateQualifiedName(
           node,
           recurse(node.left),
           node.right);
       } else if (ts.isPropertyAssignment(node)) {
         // Make sure we don't accidentally fool ourselves
         // into visiting property name identifiers.
-        return ts.updatePropertyAssignment(
+        return ts.factory.updatePropertyAssignment(
           node,
           node.name,
           recurse(node.initializer));
@@ -407,7 +406,7 @@ function visitor(ctx: ts.TransformationContext) {
           newDeclarations.push(ts.visitEachChild(declaration, visitor(captured), ctx));
         }
         // Finally, update the declaration list.
-        return ts.updateVariableDeclarationList(node, newDeclarations);
+        return ts.factory.updateVariableDeclarationList(node, newDeclarations);
       } else if (ts.isVariableDeclaration(node)) {
         visitDeclaration(node.name, captured, false);
         return ts.visitEachChild(node, visitor(captured), ctx);
@@ -425,7 +424,7 @@ function visitor(ctx: ts.TransformationContext) {
 }
 
 export default function() {
-  return (ctx: ts.TransformationContext): ts.Transformer<ts.SourceFile> => {
+  return (ctx: ts.TransformationContext): ts.Transformer<ts.Node> => {
     return (sf: ts.SourceFile) => ts.visitNode(sf, visitor(ctx));
   }
 }
