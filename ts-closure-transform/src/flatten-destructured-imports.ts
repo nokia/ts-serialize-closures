@@ -57,17 +57,17 @@ function mapUnqualifiedIdentifiers<T extends ts.Node>(
     } else if (ts.isIdentifier(node)) {
       return <TNode><any>mapping(node);
     } else if (ts.isPropertyAccessExpression(node)) {
-      return <TNode><any>ts.updatePropertyAccess(
+      return <TNode><any>ts.factory.updatePropertyAccessExpression(
         node,
         visit(node.expression),
         node.name);
     } else if (ts.isPropertyAssignment(node)) {
-      return <TNode><any>ts.updatePropertyAssignment(
+      return <TNode><any>ts.factory.updatePropertyAssignment(
         node,
         node.name,
         visit(node.initializer));
     } else if (ts.isShorthandPropertyAssignment(node)) {
-      return <TNode><any>ts.updateShorthandPropertyAssignment(
+      return <TNode><any>ts.factory.updateShorthandPropertyAssignment(
         node,
         node.name,
         visit(node.objectAssignmentInitializer));
@@ -94,31 +94,33 @@ function createVisitor(ctx: ts.TransformationContext): ts.Visitor {
         let clause = node.importClause;
         if (clause) {
           // Create a temporary name for the imported module.
-          let temp = ts.createUniqueName("_tct_flatten_destructured_imports");
+          let temp = ts.factory.createUniqueName("_tct_flatten_destructured_imports");
           // Bind each import to a variable.
           let importBindings = [];
 
           if (clause.name) {
             // Process the default import statement
             importBindings.push(
-              ts.createVariableStatement(
+              ts.factory.createVariableStatement(
                 [],
                 [
-                  ts.createVariableDeclaration(
+                  ts.factory.createVariableDeclaration(
                     clause.name,
                     undefined,
-                    ts.createPropertyAccess(temp, "default"))
+                    undefined,
+                    ts.factory.createPropertyAccessExpression(temp, "default"))
                 ]));
             modifiedSet.push(clause.name.text);
           }
           let bindings = clause.namedBindings;
           if (bindings && ts.isNamespaceImport(bindings)) {
             importBindings.push(
-              ts.createVariableStatement(
+              ts.factory.createVariableStatement(
                 [],
                 [
-                  ts.createVariableDeclaration(
+                  ts.factory.createVariableDeclaration(
                     bindings.name,
+                    undefined,
                     undefined,
                     temp)
                 ]));
@@ -128,27 +130,28 @@ function createVisitor(ctx: ts.TransformationContext): ts.Visitor {
             // Named imports. That's exactly what we're looking for.
             for (let specifier of bindings.elements) {
               importBindings.push(
-                ts.createVariableStatement(
+                ts.factory.createVariableStatement(
                   [],
                   [
-                    ts.createVariableDeclaration(
+                    ts.factory.createVariableDeclaration(
                       specifier.name,
                       undefined,
-                      ts.createPropertyAccess(temp, specifier.propertyName || specifier.name))
+                      undefined,
+                      ts.factory.createPropertyAccessExpression(temp, specifier.propertyName || specifier.name))
                   ]));
               modifiedSet.push(specifier.name.text);
             }
           }
           return [
-            ts.updateImportDeclaration(
+            ts.factory.updateImportDeclaration(
               node,
-              node.decorators,
               node.modifiers,
-              ts.updateImportClause(
+              ts.factory.updateImportClause(
                 clause,
+                clause.isTypeOnly,
                 clause.name,
-                ts.createNamespaceImport(temp)),
-              node.moduleSpecifier),
+                ts.factory.createNamespaceImport(temp)),
+              node.moduleSpecifier, node.attributes),
             ...importBindings
           ];
         }
@@ -166,7 +169,7 @@ function createVisitor(ctx: ts.TransformationContext): ts.Visitor {
           // Replace the original identifier with a synthetic
           // identifier to keep the TypeScript compiler from
           // applying its import/export voodoo where it shouldn't.
-          return ts.createIdentifier(ident.text);
+          return ts.factory.createIdentifier(ident.text);
         } else {
           return ident;
         }
@@ -178,7 +181,7 @@ function createVisitor(ctx: ts.TransformationContext): ts.Visitor {
 }
 
 export default function () {
-  return (ctx: ts.TransformationContext): ts.Transformer<ts.SourceFile> => {
+  return (ctx: ts.TransformationContext): ts.Transformer<ts.Node> => {
     return (sf: ts.SourceFile) => ts.visitNode(sf, createVisitor(ctx));
   }
 }

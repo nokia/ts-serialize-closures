@@ -7,8 +7,7 @@
   "scripts": {
     "build": "tsc",
     "test": "mocha --inspect=9228",
-    "test:clean": "rm -rf test/fixture/*.js && mocha",
-    "prepublish": "tsc"
+    "test:clean": "rm -rf test/fixture/*.js && mocha"
   },
   "repository": {
     "type": "git",
@@ -32,12 +31,11 @@
   ],
   "homepage": "https://github.com/nokia/ts-serialize-closures/blob/master/README.md",
   "devDependencies": {
-    "@types/jest": "^29.5.11",
     "chai": "^5.0.0",
     "fs-extra": "^11.2.0",
     "glob": "^10.3.10",
     "mocha": "^10.2.0",
-    "ts-node": "^3.0.2",
-    "typescript": "^2.7.0-rc"
+    "ts-node": "^10.9.2",
+    "typescript": "5.3.3"
   }
 }

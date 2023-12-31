@@ -18,7 +18,7 @@ export function createFunctionHoistingVisitor(ctx: ts.TransformationContext): ts
 }
 
 export default function () {
-  return (ctx: ts.TransformationContext): ts.Transformer<ts.SourceFile> => {
+  return (ctx: ts.TransformationContext): ts.Transformer<ts.Node> => {
     return (sf: ts.SourceFile) => ts.visitNode(sf, createFunctionHoistingVisitor(ctx));
   }
 }

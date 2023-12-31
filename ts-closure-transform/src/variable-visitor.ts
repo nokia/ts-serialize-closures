@@ -306,12 +306,12 @@ export abstract class VariableVisitor {
   protected visitStatement(node: ts.Statement): ts.Statement {
     let result = this.visit(node);
     if (result === undefined) {
-      return ts.createBlock([]);
+      return ts.factory.createBlock([]);
     } else if (Array.isArray(result)) {
       if (result.length == 1) {
         return <ts.Statement>result[0];
       } else {
-        return ts.createBlock(<ts.Statement[]>result);
+        return ts.factory.createBlock(<ts.Statement[]>result);
       }
     } else {
       return <ts.Statement>result;
@@ -343,25 +343,25 @@ export abstract class VariableVisitor {
       return node;
 
     } else if (ts.isPropertyAccessExpression(node)) {
-      return ts.updatePropertyAccess(
+      return ts.factory.updatePropertyAccessExpression(
         node,
         this.visitExpression(node.expression),
         node.name);
 
     } else if (ts.isQualifiedName(node)) {
-      return ts.updateQualifiedName(
+      return ts.factory.updateQualifiedName(
         node,
         <ts.EntityName>this.visit(node.left),
         node.right);
 
     } else if (ts.isPropertyAssignment(node)) {
-      return ts.updatePropertyAssignment(
+      return ts.factory.updatePropertyAssignment(
         node,
         node.name,
         this.visitExpression(node.initializer));
 
     } else if (ts.isShorthandPropertyAssignment(node)) {
-      return ts.updateShorthandPropertyAssignment(
+      return ts.factory.updateShorthandPropertyAssignment(
         node,
         node.name,
         this.visitExpression(node.objectAssignmentInitializer));
@@ -393,7 +393,7 @@ export abstract class VariableVisitor {
     // Things that introduce scopes.
     else if (ts.isArrowFunction(node)) {
       let body = this.visitFunctionBody(node.parameters, node.body);
-      return ts.updateArrowFunction(
+      return ts.factory.updateArrowFunction(
         node,
         node.modifiers,
         node.typeParameters,
@@ -404,7 +404,7 @@ export abstract class VariableVisitor {
 
     } else if (ts.isFunctionExpression(node)) {
       let body = this.visitFunctionBody(node.parameters, node.body, node.name);
-      return ts.updateFunctionExpression(
+      return ts.factory.updateFunctionExpression(
         node,
         node.modifiers,
         node.asteriskToken,
@@ -415,9 +415,8 @@ export abstract class VariableVisitor {
         body);
 
     } else if (ts.isGetAccessor(node)) {
-      return ts.updateGetAccessor(
+      return ts.factory.updateGetAccessorDeclaration(
         node,
-        node.decorators,
         node.modifiers,
         node.name,
         node.parameters,
@@ -425,18 +424,16 @@ export abstract class VariableVisitor {
         this.visitFunctionBody(node.parameters, node.body));
 
     } else if (ts.isSetAccessor(node)) {
-      return ts.updateSetAccessor(
+      return ts.factory.updateSetAccessorDeclaration(
         node,
-        node.decorators,
         node.modifiers,
         node.name,
         node.parameters,
         this.visitFunctionBody(node.parameters, node.body));
 
     } else if (ts.isMethodDeclaration(node)) {
-      return ts.updateMethod(
+      return ts.factory.updateMethodDeclaration(
         node,
-        node.decorators,
         node.modifiers,
         node.asteriskToken,
         node.name,
@@ -463,7 +460,7 @@ export abstract class VariableVisitor {
   }
 
   private visitBlock(block: ts.Block): ts.Block {
-    return ts.updateBlock(
+    return ts.factory.updateBlock(
       block,
       ts.visitLexicalEnvironment(
         block.statements,
@@ -482,11 +479,12 @@ export abstract class VariableVisitor {
       let id = this.scope.getId(lhs);
 
       if (node.operatorToken.kind === ts.SyntaxKind.EqualsToken) {
-        let visited = ts.updateBinary(
+        let visited = ts.factory.updateBinaryExpression(
           node,
           lhs,
+          node.operatorToken,
           this.visitExpression(node.right),
-          node.operatorToken);
+          );
         let rewrite = this.visitAssignment(lhs, id);
         if (rewrite) {
           return rewrite(visited);
@@ -497,20 +495,22 @@ export abstract class VariableVisitor {
         let rewrite = this.visitAssignment(lhs, id);
         if (rewrite) {
           return rewrite(
-            ts.updateBinary(
+            ts.factory.updateBinaryExpression(
               node,
               lhs,
-              ts.createBinary(
+              ts.factory.createToken(ts.SyntaxKind.EqualsToken),
+              ts.factory.createBinaryExpression(
                 this.visitUse(lhs, id),
-                noAssignmentTokenMapping[node.operatorToken.kind],
+                node.operatorToken,
                 this.visitExpression(node.right)),
-              ts.createToken(ts.SyntaxKind.EqualsToken)));
+              ));
         } else {
-          return ts.updateBinary(
+          return ts.factory.updateBinaryExpression(
             node,
             lhs,
+            node.operatorToken,
             this.visitExpression(node.right),
-            node.operatorToken);
+            );
         }
       }
       return this.visitChildren(node);
@@ -532,12 +532,12 @@ export abstract class VariableVisitor {
         // then rewriting the desugared version.
         let use = this.visitUse(expression.operand, id);
         let value = expression.operator === ts.SyntaxKind.PlusPlusToken
-          ? ts.createAdd(use, ts.createLiteral(1))
-          : ts.createSubtract(use, ts.createLiteral(1));
+          ? ts.factory.createAdd(use, ts.createLiteral(1))
+          : ts.factory.createSubtract(use, ts.createLiteral(1));
 
         return simplifyExpression(
           rewrite(
-            ts.createAssignment(
+            ts.factory.createAssignment(
               expression.operand,
               value)));
       } else {
@@ -561,8 +561,8 @@ export abstract class VariableVisitor {
         // then rewriting the desugared version.
         let secondUse = this.visitUse(expression.operand, id);
         let value = expression.operator === ts.SyntaxKind.PlusPlusToken
-          ? ts.createAdd(secondUse, ts.createLiteral(1))
-          : ts.createSubtract(secondUse, ts.createLiteral(1));
+          ? ts.factory.createAdd(secondUse, ts.factory.createLiteral(1))
+          : ts.factory.createSubtract(secondUse, ts.createLiteral(1));
 
         if (expression.parent &&
           (ts.isExpressionStatement(expression.parent)
@@ -571,7 +571,7 @@ export abstract class VariableVisitor {
           // 'for' statement then we don't need an extra variable.
           return simplifyExpression(
             rewrite(
-              ts.createAssignment(
+              ts.factory.createAssignment(
                 expression.operand,
                 value)));
         } else {
@@ -580,14 +580,14 @@ export abstract class VariableVisitor {
 
           let firstUse = this.visitUse(expression.operand, id);
 
-          return ts.createCommaList(
+          return ts.factory.createCommaListExpression(
             [
-              ts.createAssignment(
+              ts.factory.createAssignment(
                 temp,
                 firstUse),
               simplifyExpression(
                 rewrite(
-                  ts.createAssignment(
+                  ts.factory.createAssignment(
                     expression.operand,
                     value))),
               temp
@@ -642,10 +642,10 @@ export abstract class VariableVisitor {
       }
 
       statements.push(
-        ts.updateVariableStatement(
+        ts.factory.updateVariableStatement(
           statement,
           statement.modifiers,
-          ts.updateVariableDeclarationList(
+          ts.factory.updateVariableDeclarationList(
             statement.declarationList,
             declarations)));
       declarations = [];
@@ -664,17 +664,18 @@ export abstract class VariableVisitor {
         if (rewrite) {
           let temp = this.createTemporary();
           fixups.push(
-            ts.createVariableStatement(
+            ts.factory.createVariableStatement(
               [],
               [
-                ts.createVariableDeclaration(
+                ts.factory.createVariableDeclaration(
                   name,
+                  undefined,
                   undefined,
                   init)
               ]),
             ts.createStatement(
               rewrite(
-                ts.createAssignment(name, temp))));
+                ts.factory.createAssignment(name, temp))));
           return temp;
         } else {
           return name;
@@ -686,14 +687,14 @@ export abstract class VariableVisitor {
             newElements.push(elem);
           } else {
             newElements.push(
-              ts.updateBindingElement(
+              ts.factory.updateBindingElement(
                 elem,
                 elem.dotDotDotToken,
                 elem.propertyName,
                 visitBinding(elem.name),
                 elem.initializer));
           }
-          return ts.updateArrayBindingPattern(
+          return ts.factory.updateArrayBindingPattern(
             name,
             newElements);
         }
@@ -701,14 +702,14 @@ export abstract class VariableVisitor {
         let newElements: ts.BindingElement[] = [];
         for (let elem of name.elements) {
           newElements.push(
-            ts.updateBindingElement(
+            ts.factory.updateBindingElement(
               elem,
               elem.dotDotDotToken,
               elem.propertyName,
               visitBinding(elem.name),
               elem.initializer));
         }
-        return ts.updateObjectBindingPattern(
+        return ts.factory.updateObjectBindingPattern(
           name,
           newElements);
       }
@@ -731,9 +732,9 @@ export abstract class VariableVisitor {
             let rewrite = this.visitAssignment(name, id);
             if (rewrite) {
               fixups.push(
-                ts.createStatement(
+                ts.factory.createStatement(
                   rewrite(
-                    ts.createAssignment(
+                    ts.factory.createAssignment(
                       name,
                       initializer))));
               initializer = undefined;
@@ -742,8 +743,8 @@ export abstract class VariableVisitor {
           if (customInit) {
             if (initializer) {
               fixups.push(
-                ts.createStatement(
-                  ts.createAssignment(
+                ts.factory.createStatement(
+                  ts.factory.createAssignment(
                     name,
                     initializer)));
             }
@@ -751,17 +752,19 @@ export abstract class VariableVisitor {
           }
         }
         declarations.push(
-          ts.updateVariableDeclaration(
+          ts.factory.updateVariableDeclaration(
             decl,
             name,
+            decl.exclamationToken,
             decl.type,
             initializer));
       } else {
         // All other patterns are processed by visiting them recursively.
         declarations.push(
-          ts.updateVariableDeclaration(
+          ts.factory.updateVariableDeclaration(
             decl,
             visitBinding(decl.name),
+            decl.exclamationToken,
             decl.type,
             initializer));
       }
@@ -814,7 +817,7 @@ export abstract class VariableVisitor {
     if (statement.initializer && ts.isVariableDeclarationList(statement.initializer)) {
       // If the 'for' has a variable declaration list as an initializer, then turn
       // the initializer into a variable declaration statement.
-      let initializer = this.visitStatement(ts.createVariableStatement([], statement.initializer));
+      let initializer = this.visitStatement(ts.factory.createVariableStatement([], statement.initializer));
 
       // Also visit the condition, incrementor and body.
       let condition = this.visitExpression(statement.condition);
@@ -824,12 +827,12 @@ export abstract class VariableVisitor {
       if (ts.isVariableStatement(initializer)) {
         // If the initializer has been rewritten as a variable declaration, then
         // we can create a simple 'for' loop.
-        result = ts.updateFor(statement, initializer.declarationList, condition, incrementor, body);
+        result = ts.factory.updateForStatement(statement, initializer.declarationList, condition, incrementor, body);
       } else {
         // Otherwise, we'll factor out the initializer.
-        result = ts.createBlock([
+        result = ts.factory.createBlock([
           initializer,
-          ts.updateFor(statement, undefined, condition, incrementor, body)
+          ts.factory.updateForStatement(statement, undefined, condition, incrementor, body)
         ]);
       }
     } else {
@@ -855,7 +858,7 @@ export abstract class VariableVisitor {
         // FIXME: allow this variable to be rewritten.
         this.defineVariables(statement.catchClause.variableDeclaration.name);
       }
-      catchClause = ts.updateCatchClause(
+      catchClause = ts.factory.updateCatchClause(
         statement.catchClause,
         statement.catchClause.variableDeclaration,
         this.visitBlock(statement.catchClause.block));
@@ -866,7 +869,7 @@ export abstract class VariableVisitor {
     let finallyBlock = statement.finallyBlock
       ? this.visitBlock(statement.finallyBlock)
       : statement.finallyBlock;
-    return ts.updateTry(statement, tryBlock, catchClause, finallyBlock);
+    return ts.factory.updateTryStatement(statement, tryBlock, catchClause, finallyBlock);
   }
 
   /**
@@ -891,9 +894,9 @@ export abstract class VariableVisitor {
     this.scope = oldScope;
 
     if (ts.isForInStatement(statement)) {
-      return ts.updateForIn(statement, initializer, expr, body);
+      return ts.factory.updateForInStatement(statement, initializer, expr, body);
     } else {
-      return ts.updateForOf(statement, statement.awaitModifier, initializer, expr, body);
+      return ts.factory.updateForOfStatement(statement, statement.awaitModifier, initializer, expr, body);
     }
   }
 
@@ -951,7 +954,8 @@ export abstract class VariableVisitor {
     let body = this.visitFunctionBody(node.parameters, node.body);
 
     if (defInitializer || rewriteAssignment) {
-      let funExpr = ts.createFunctionExpression(
+      let funExpr = ts.factory.createFunctionExpression(
+        // @ts-ignore
         node.modifiers,
         node.asteriskToken,
         undefined,
@@ -960,19 +964,18 @@ export abstract class VariableVisitor {
         node.type,
         body);
 
-      let funAssignment = ts.createAssignment(node.name, funExpr);
+      let funAssignment = ts.factory.createAssignment(node.name, funExpr);
 
       return [
-        ts.createVariableStatement(
+        ts.factory.createVariableStatement(
           [],
-          [ts.createVariableDeclaration(node.name, undefined, defInitializer)]),
+          [ts.factory.createVariableDeclaration(node.name, undefined, undefined,defInitializer)]),
         ts.createStatement(rewriteAssignment ? rewriteAssignment(funAssignment) : funAssignment)
       ];
 
     } else {
-      return ts.updateFunctionDeclaration(
+      return ts.factory.updateFunctionDeclaration(
         node,
-        node.decorators,
         node.modifiers,
         node.asteriskToken,
         node.name,
@@ -987,7 +990,7 @@ export abstract class VariableVisitor {
    * Creates a temporary variable name.
    */
   protected createTemporary(): ts.Identifier {
-    let result = ts.createUniqueName("_tct_variable_visitor");
+    let result = ts.factory.createUniqueName("_tct_variable_visitor");
     this.scope.define(result);
     return result;
   }
