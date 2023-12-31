@@ -57,7 +57,7 @@ function mapUnqualifiedIdentifiers<T extends ts.Node>(
     } else if (ts.isIdentifier(node)) {
       return <TNode><any>mapping(node);
     } else if (ts.isPropertyAccessExpression(node)) {
-      return <TNode><any>ts.factory.updatePropertyAccess(
+      return <TNode><any>ts.factory.updatePropertyAccessExpression(
         node,
         visit(node.expression),
         node.name);
@@ -107,7 +107,8 @@ function createVisitor(ctx: ts.TransformationContext): ts.Visitor {
                   ts.factory.createVariableDeclaration(
                     clause.name,
                     undefined,
-                    ts.factory.createPropertyAccess(temp, "default"))
+                    undefined,
+                    ts.factory.createPropertyAccessExpression(temp, "default"))
                 ]));
             modifiedSet.push(clause.name.text);
           }
@@ -119,6 +120,7 @@ function createVisitor(ctx: ts.TransformationContext): ts.Visitor {
                 [
                   ts.factory.createVariableDeclaration(
                     bindings.name,
+                    undefined,
                     undefined,
                     temp)
                 ]));
@@ -133,6 +135,7 @@ function createVisitor(ctx: ts.TransformationContext): ts.Visitor {
                   [
                     ts.factory.createVariableDeclaration(
                       specifier.name,
+                      undefined,
                       undefined,
                       ts.factory.createPropertyAccessExpression(temp, specifier.propertyName || specifier.name))
                   ]));
