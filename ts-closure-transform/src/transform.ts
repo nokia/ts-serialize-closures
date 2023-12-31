@@ -305,7 +305,7 @@ function visitor(ctx: ts.TransformationContext) {
     } else {
       return [
         visitedFunc,
-        ts.createStatement(
+        ts.factory.createExpressionStatement(
           createClosurePropertyAssignment(
             node.name,
             captured))
