@@ -955,6 +955,7 @@ export abstract class VariableVisitor {
 
     if (defInitializer || rewriteAssignment) {
       let funExpr = ts.factory.createFunctionExpression(
+        // @ts-ignore
         node.modifiers,
         node.asteriskToken,
         undefined,
