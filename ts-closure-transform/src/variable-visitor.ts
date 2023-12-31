@@ -532,8 +532,8 @@ export abstract class VariableVisitor {
         // then rewriting the desugared version.
         let use = this.visitUse(expression.operand, id);
         let value = expression.operator === ts.SyntaxKind.PlusPlusToken
-          ? ts.factory.createAdd(use, ts.createLiteral(1))
-          : ts.factory.createSubtract(use, ts.createLiteral(1));
+          ? ts.factory.createAdd(use, ts.factory.createNumericLiteral(1))
+          : ts.factory.createSubtract(use, ts.factory.createNumericLiteral(1));
 
         return simplifyExpression(
           rewrite(
@@ -561,8 +561,8 @@ export abstract class VariableVisitor {
         // then rewriting the desugared version.
         let secondUse = this.visitUse(expression.operand, id);
         let value = expression.operator === ts.SyntaxKind.PlusPlusToken
-          ? ts.factory.createAdd(secondUse, ts.factory.createLiteral(1))
-          : ts.factory.createSubtract(secondUse, ts.createLiteral(1));
+          ? ts.factory.createAdd(secondUse, ts.factory.createNumericLiteral(1))
+          : ts.factory.createSubtract(secondUse, ts.factory.createNumericLiteral(1));
 
         if (expression.parent &&
           (ts.isExpressionStatement(expression.parent)
