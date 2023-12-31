@@ -673,7 +673,7 @@ export abstract class VariableVisitor {
                   undefined,
                   init)
               ]),
-            ts.createStatement(
+            ts.factory.createExpressionStatement(
               rewrite(
                 ts.factory.createAssignment(name, temp))));
           return temp;
@@ -732,7 +732,7 @@ export abstract class VariableVisitor {
             let rewrite = this.visitAssignment(name, id);
             if (rewrite) {
               fixups.push(
-                ts.factory.createStatement(
+                ts.factory.createExpressionStatement(
                   rewrite(
                     ts.factory.createAssignment(
                       name,
@@ -743,7 +743,7 @@ export abstract class VariableVisitor {
           if (customInit) {
             if (initializer) {
               fixups.push(
-                ts.factory.createStatement(
+                ts.factory.createExpressionStatement(
                   ts.factory.createAssignment(
                     name,
                     initializer)));
@@ -970,7 +970,7 @@ export abstract class VariableVisitor {
         ts.factory.createVariableStatement(
           [],
           [ts.factory.createVariableDeclaration(node.name, undefined, undefined,defInitializer)]),
-        ts.createStatement(rewriteAssignment ? rewriteAssignment(funAssignment) : funAssignment)
+        ts.factory.createExpressionStatement(rewriteAssignment ? rewriteAssignment(funAssignment) : funAssignment)
       ];
 
     } else {
