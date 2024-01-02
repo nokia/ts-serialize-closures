@@ -1,7 +1,7 @@
-var _tct_transform_1;
 function g() {
     ++x.value;
 }
+var _tct_transform_1;
 g.__closure = () => ({ x });
 let x = { value: undefined };
 x.value = 10;
