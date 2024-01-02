@@ -31,7 +31,8 @@
   ],
   "homepage": "https://github.com/nokia/ts-serialize-closures/blob/master/README.md",
   "devDependencies": {
-    "chai": "^5.0.0",
+    "@types/jest": "^29.5.11",
+    "chai": "^4.3.4",
     "fs-extra": "^11.2.0",
     "glob": "^10.3.10",
     "mocha": "^10.2.0",
