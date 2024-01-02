@@ -1,6 +1,6 @@
-import { types, isFunction, isArray, isPrimitive, isDate, isRegExp } from "util";
+import { types } from "util";
 import { getNameOfBuiltin, getBuiltinByName, BuiltinList, defaultBuiltins, generateDefaultBuiltins } from "./builtins";
-import { retrieveCustomSerializer, CustomSerializerList, defaultCustoms, retrieveCustomDeserializer, CustomDeserializerList } from "./customs";
+import { retrieveCustomSerializer, CustomSerializerList, retrieveCustomDeserializer, CustomDeserializerList } from "./customs";
 
 export interface ValueFlags {
   accessor?: "get" | "set"
@@ -256,32 +256,30 @@ export class SerializedGraph {
     }
 
     // Usual serialization logic.
-    if (isPrimitive(value)) {
+    if ((typeof value !== 'object' && typeof value !== 'function') || value === null) {
       return {
         'kind': 'primitive',
         'value': value
       };
-    } else if (isArray(value)) {
+    } else if (Array.isArray(value)) {
       return {
         'kind': 'array',
         'refs': value.map(v => this.add(v))
       };
-    } else if (isFunction(value)) {
+    } else if (typeof value === 'function') {
       if (flags && flags.accessor) {
         return this.serializeAccessorFunction(value, flags.accessor);
       } else {
         return this.serializeFunction(value);
       }
     } else if (
-      (types && types.isDate(value)) || // Node v10+
-      (!types && isDate(value))) {      // Deprecated
+      (types && types.isDate(value))) {      // Deprecated
       return {
         'kind': 'date',
         'value': JSON.stringify(value)
       };
     } else if (
-      (types && types.isRegExp(value)) || // Node v10+
-      (!types && isRegExp(value))) {      // Deprecated
+      (types && types.isRegExp(value))) {      // Deprecated
       return {
         'kind': 'regex',
         'value': value.toString()
