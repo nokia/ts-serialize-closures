@@ -181,7 +181,7 @@ function createVisitor(ctx: ts.TransformationContext): ts.Visitor {
 }
 
 export default function () {
-  return (ctx: ts.TransformationContext): ts.Transformer<ts.Node> => {
-    return (sf: ts.SourceFile) => ts.visitNode(sf, createVisitor(ctx));
+  return (ctx: ts.TransformationContext): ts.Transformer<ts.SourceFile> => {
+    return (sf: ts.SourceFile) => ts.visitNode(sf, createVisitor(ctx)) as ts.SourceFile;
   }
 }

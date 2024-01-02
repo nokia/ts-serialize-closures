@@ -4,7 +4,7 @@ import { default as boxMutableSharedVariables } from './box-mutable-captured-var
 import { default as hoistFunctions } from './hoist-functions';
 import * as ts from 'typescript';
 
-type Transform = (ctx: ts.TransformationContext) => ts.Transformer<ts.Node>;
+type Transform = (ctx: ts.TransformationContext) => ts.Transformer<ts.SourceFile>;
 
 /**
  * Takes a list of transforms and turns it into a transform pipeline.
