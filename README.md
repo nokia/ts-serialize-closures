@@ -35,7 +35,30 @@ npm init
 npm install --save-dev ts-closure-transform serialize-closures webpack webpack-cli typescript ts-loader util
 ```
 
-  2. Configure `webpack.config.js`:
+  2.1 Configure `tsconfig.json`:
+```json
+{
+    "compileOnSave": true,
+    "compilerOptions": {
+        "target": "ES5",
+        "module": "commonjs",
+        "declaration": true,
+        "moduleResolution": "node",
+        "stripInternal": true,
+        "jsx": "react",
+        "outDir": "dist"
+    },
+    "include": [
+        "src/**/*"
+    ],
+    "exclude": [
+        "node_modules",
+        "dist"
+    ]
+}
+```
+
+  2.2 Configure `webpack.config.js`:
 ```javascript
 const tsClosureTransform = require('ts-closure-transform');
 const path = require('path');
@@ -43,6 +66,7 @@ module.exports = {
   entry: {
     example: './src/example.ts',
   },
+  mode: 'development',
   module: {
     rules: [
       {
@@ -70,7 +94,7 @@ module.exports = {
 }
 ```
 
-  3. Write code to serialize and deserialize arbitrary functions:
+  3. Write code `src/example.ts` to serialize and deserialize arbitrary functions:
 ```typescript
 import { serialize, deserialize } from 'serialize-closures';
 // Just about anything can be serialized by calling `serialize`.
@@ -103,7 +127,7 @@ The serializer consists of two components.
       ```typescript
       import { beforeTransform, afterTransform } from 'ts-closure-transform';
       // ...
-      loader: 'ts-loader', // or 'awesome-typescript-loader'
+      loader: 'ts-loader',
       options: {
         getCustomTransformers: () => ({
           before: [beforeTransform()],

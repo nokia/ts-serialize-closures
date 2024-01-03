@@ -4,12 +4,12 @@ This package defines TypeScript code transformations that enable the `serialize-
 
 These transformations will rewrite all function definitions to include a special `__closure` property. The serializer uses that `__closure` property to figure out which variables are captured by the function.
 
-How you inject this transform depends on the webpack loader you're using. For `ts-loader` and `awesome-typescript-loader`, you can do the following:
+How you inject this transform depends on the webpack loader you're using. For `ts-loader` you apply the following:
 
 ```typescript
 import { beforeTransform, afterTransform } from 'ts-closure-transform';
 // ...
-loader: 'ts-loader', // or 'awesome-typescript-loader'
+loader: 'ts-loader',
 options: {
   getCustomTransformers: () => ({
     before: [beforeTransform()],
