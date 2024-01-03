@@ -1,4 +1,4 @@
-import { expect } from 'chai';
+import { equal } from 'node:assert';
 import { serialize, deserialize } from '../../../serialize-closures/src';
 
 function roundtrip<T>(value: T): T {
@@ -12,5 +12,5 @@ export enum Match {
 }
 
 export function enumString() {
-    expect(roundtrip(Match.CROSSES)).to.equal("CROSSES");
+    equal(roundtrip(Match.CROSSES), "CROSSES");
 }

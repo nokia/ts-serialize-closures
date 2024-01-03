@@ -4,6 +4,7 @@
   "description": "Rewrites functions to include a '__closure' property, suitable for function serialization.",
   "main": "dist/index.js",
   "typings": "dist/index.d.ts",
+  "type": "commonjs",
   "scripts": {
     "build": "tsc",
     "test": "mocha --inspect=9228",
@@ -32,7 +33,7 @@
   "homepage": "https://github.com/nokia/ts-serialize-closures/blob/master/README.md",
   "devDependencies": {
     "@types/jest": "^29.5.11",
-    "chai": "^4.3.4",
+    "@types/node": "^20.10.6",
     "fs-extra": "^11.2.0",
     "glob": "^10.3.10",
     "mocha": "^10.2.0",

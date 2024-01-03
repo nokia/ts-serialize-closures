@@ -1,6 +1,6 @@
 import compile, { CJS_CONFIG } from '../compile';
 import { resolve } from 'path';
-import { expect } from 'chai';
+import { equal } from 'node:assert';
 import * as fs from 'fs';
 import * as ts from 'typescript';
 
@@ -36,8 +36,8 @@ function assertCompilesTo(sourceFile: string, expectedOutput: string) {
     fileName: string,
     data: string,
     writeByteOrderMark: boolean,
-    onError: (message: string) => void | undefined,
-    sourceFiles: ReadonlyArray<ts.SourceFile>): void {
+    onError: ((message: string) => void) | undefined,
+    sourceFiles: ReadonlyArray<ts.SourceFile> | undefined): void {
 
     let trimmedData = data.trim();
     let trimmedOutput = expectedOutput.trim();
@@ -53,7 +53,7 @@ function assertCompilesTo(sourceFile: string, expectedOutput: string) {
       console.log(data);
     }
 
-    expect(trimmedData).to.equal(trimmedOutput);
+    equal(trimmedData, trimmedOutput);
   }
 
   compile(

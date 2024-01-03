@@ -1,5 +1,5 @@
 
-import { expect } from 'chai';
+import { equal } from 'node:assert';
 import { serialize, deserialize } from '../../../serialize-closures/src';
 
 function roundtrip<T>(value: T): T {
@@ -21,9 +21,9 @@ class Vector2 {
 }
 
 export function classObject() {
-  expect(roundtrip(new Vector2(3, 4)).length).to.equal(5);
+  equal(roundtrip(new Vector2(3, 4)).length, 5);
 }
 
 export function constructorCall() {
-  expect(roundtrip(() => new Vector2(3, 4))().length).to.equal(5);
+  equal(roundtrip(() => new Vector2(3, 4))().length, 5);
 }

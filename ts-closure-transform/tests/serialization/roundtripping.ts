@@ -1,4 +1,4 @@
-import { expect } from 'chai';
+import { equal, deepEqual } from 'node:assert';
 import { serialize, deserialize } from '../../../serialize-closures/src';
 
 function roundtrip<T>(value: T): T {
@@ -12,17 +12,17 @@ export function roundTripObjectPropertyValueShorthand() {
       y
     }
   }
-  expect(roundtrip(createPoint)(1, 2)).to.deep.equal({ x: 1, y: 2 });
+  deepEqual(roundtrip(createPoint)(1, 2), { x: 1, y: 2 });
 }
 
 export function roundTripObjectPropertyValueShorthand2() {
   let f = v => {
-    let vs = []
+    let vs: any[] = []
     vs.push({v});
     return vs;
   }
   let f2 = roundtrip(f);
-  expect(f2(1)).to.deep.equal([{ v: 1 }]);
+  deepEqual(f2(1), [{ v: 1 }]);
 }
 
 export function roundTripClosure() {
@@ -35,7 +35,7 @@ export function roundTripClosure() {
     }
   };
 
-  expect(roundtrip(factorial)(5)).to.equal(120);
+  equal(roundtrip(factorial)(5), 120);
 }
 
 export function roundTripHoistingClosure() {
@@ -49,7 +49,7 @@ export function roundTripHoistingClosure() {
   };
 
   let out = roundtrip(f);
-  expect(out(4)).to.equal(5);
+  equal(out(4), 5);
 }
 
 export function roundTripHoistingClosure2() {
@@ -62,7 +62,7 @@ export function roundTripHoistingClosure2() {
   };
 
   let out = roundtrip(f());
-  expect(out(4)).to.equal(5);
+  equal(out(4), 5);
 }
 
 export function roundTripHoistingClosure3() {
@@ -76,7 +76,7 @@ export function roundTripHoistingClosure3() {
   };
 
   let out = roundtrip(f());
-  expect(out(4)).to.equal(5);
+  equal(out(4), 5);
 }
 
 export function roundTripNestedClosure() {
@@ -88,8 +88,8 @@ export function roundTripNestedClosure() {
   };
 
   let out = roundtrip(f(10))(5);
-  expect(out.result).to.equal(25);
-  expect(out.f(10)(5).result).to.equal(25);
+  equal(out.result, 25);
+  equal(out.f(10)(5).result, 25);
 }
 
 export function roundTripMathClosure() {
@@ -98,7 +98,7 @@ export function roundTripMathClosure() {
   };
 
   let out = roundtrip(f);
-  expect(out(4)).to.equal(2);
+  equal(out(4), 2);
 }
 
 export function roundTripMathFunctionClosure() {
@@ -108,5 +108,5 @@ export function roundTripMathFunctionClosure() {
   };
 
   let out = roundtrip(f);
-  expect(out(4)).to.equal(2);
+  equal(out(4), 2);
 }

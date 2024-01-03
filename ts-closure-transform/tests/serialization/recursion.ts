@@ -1,4 +1,4 @@
-import { expect } from 'chai';
+import { equal, deepEqual } from 'node:assert';
 import { serialize, deserialize } from '../../../serialize-closures/src';
 
 function roundtrip<T>(value: T): T {
@@ -6,17 +6,17 @@ function roundtrip<T>(value: T): T {
 }
 
 export function simpleRecursiveRoundtrip() {
-    expect(1).to.equal(1);
-    expect(roundtrip(1)).to.equal(1);
-    expect(roundtrip(roundtrip(1))).to.equal(1);
-    expect(roundtrip(roundtrip(roundtrip(1)))).to.equal(1);
+    equal(1, 1);
+    equal(roundtrip(1), 1);
+    equal(roundtrip(roundtrip(1)), 1);
+    equal(roundtrip(roundtrip(roundtrip(1))), 1);
 }
 
 export function objectRecursiveRoundtrip() {
-    expect({f: 1}).to.deep.equal({f: 1});
-    expect(roundtrip({f: 1})).to.deep.equal({f: 1});
-    expect(roundtrip(roundtrip({f: 1}))).to.deep.equal({f: 1});
-    expect(roundtrip(roundtrip(roundtrip({f: 1})))).to.deep.equal({f: 1});
+    deepEqual({f: 1}, {f: 1});
+    deepEqual(roundtrip({f: 1}), {f: 1});
+    deepEqual(roundtrip(roundtrip({f: 1})), {f: 1});
+    deepEqual(roundtrip(roundtrip(roundtrip({f: 1}))), {f: 1});
 }
 
 let to5 = function(x: number) {
@@ -24,8 +24,8 @@ let to5 = function(x: number) {
 }
 
 export function functionRecursiveRoundtrip() {
-    expect(to5(1)).to.equal(5);
-    expect(roundtrip(to5)(1)).to.equal(5);
-    expect(roundtrip(roundtrip(to5))(1)).to.equal(5);
-    expect(roundtrip(roundtrip(roundtrip(to5)))(1)).to.equal(5);
+    equal(to5(1), 5);
+    equal(roundtrip(to5)(1), 5);
+    equal(roundtrip(roundtrip(to5))(1), 5);
+    equal(roundtrip(roundtrip(roundtrip(to5)))(1), 5);
 }

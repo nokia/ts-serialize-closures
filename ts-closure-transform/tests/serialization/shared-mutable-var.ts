@@ -1,5 +1,5 @@
 
-import { expect } from 'chai';
+import { equal } from 'node:assert';
 import { serialize, deserialize } from '../../../serialize-closures/src';
 
 function roundtrip<T>(value: T): T {
@@ -18,10 +18,10 @@ export function sharedMutableVariableTest() {
   let counter = createCounter();
   let roundtrippedCounter = roundtrip(counter);
 
-  expect(counter.get()).to.equal(counter.get());
+  equal(counter.get(), counter.get());
   counter.increment();
   roundtrippedCounter.increment();
-  expect(counter.get()).to.equal(roundtrippedCounter.get());
+  equal(counter.get(), roundtrippedCounter.get());
 }
 
 let sharedGlobal = 0;
@@ -32,6 +32,6 @@ function incrementSharedGlobal() {
 export function sharedMutableVariableTest2() {
   let inc = roundtrip(incrementSharedGlobal);
 
-  expect(incrementSharedGlobal()).to.equal(inc());
-  expect(incrementSharedGlobal()).to.equal(inc());
+  equal(incrementSharedGlobal(), inc());
+  equal(incrementSharedGlobal(), inc());
 }

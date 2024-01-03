@@ -11,7 +11,7 @@
 //
 //  Contributed by Ian Osgood
 
-import { expect } from 'chai';
+import { deepEqual } from 'node:assert';
 import { serialize, deserialize } from '../../../serialize-closures/src';
 
 function roundtrip<T>(value: T): T {
@@ -49,7 +49,7 @@ var HomoSap = {
 }
 
 function makeCumulative(table) {
-  var last = null;
+  var last : string | null = null;
   for (var c in table) {
     if (last) table[c] += table[last];
     last = c;
@@ -57,7 +57,7 @@ function makeCumulative(table) {
 }
 
 function fastaRepeat(n, seq) {
-  let output = [];
+  let output: string[] = [];
   var seqi = 0, lenOut = 60;
   while (n>0) {
     if (n<lenOut) lenOut = n;
@@ -75,7 +75,7 @@ function fastaRepeat(n, seq) {
 }
 
 function fastaRandom(n, table) {
-  let output = [];
+  let output: string[] = [];
   var line = new Array(60);
   makeCumulative(table);
   while (n>0) {
@@ -96,7 +96,7 @@ function fastaRandom(n, table) {
 }
 
 function runFastaTest(n) {
-  let results = [];
+  let results: Array<string | Array<string>> = [];
   results.push(">ONE Homo sapiens alu");
   results.push(fastaRepeat(2*n, ALU));
 
@@ -110,5 +110,5 @@ function runFastaTest(n) {
 
 export function fastaTest() {
   let n = 20;
-  expect(roundtrip(runFastaTest)(n)).to.deep.equal(runFastaTest(n));
+  deepEqual(roundtrip(runFastaTest)(n), runFastaTest(n));
 }

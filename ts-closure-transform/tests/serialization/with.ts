@@ -1,5 +1,5 @@
 
-import { expect } from 'chai';
+import { equal } from 'node:assert';
 import { serialize, deserialize } from '../../../serialize-closures/src';
 
 function roundtrip<T>(value: T): T {
@@ -10,6 +10,7 @@ export function roundTripBasicWith() {
   let env = { counter: 10 };
 
   let f;
+  // @ts-ignore
   with (env) {
     f = () => {
       return ++counter;
@@ -17,8 +18,8 @@ export function roundTripBasicWith() {
   }
 
   let out = roundtrip(f);
-  expect(out()).to.equal(11);
-  expect(out()).to.equal(12);
+  equal(out(), 11);
+  equal(out(), 12);
 }
 
 // If uncommented, the assertions below will fail because FlashFreeze assumes
@@ -51,7 +52,7 @@ export function roundTripPropertyWith() {
   }
 
   let out = roundtrip(f);
-  expect(out()).to.equal(0);
-  expect(out()).to.equal(1);
+  equal(out(), 0);
+  equal(out(), (1);
 }
 */
