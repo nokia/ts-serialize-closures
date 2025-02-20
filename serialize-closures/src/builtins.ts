@@ -1,5 +1,3 @@
-import { isPrimitive } from "util";
-
 /**
  * A record for a single builtin in a list of builtins.
  */
@@ -218,4 +216,8 @@ export function getNameOfBuiltin(value: any, builtinList?: BuiltinList): string 
     }
   }
   return undefined;
+}
+
+function isPrimitive(arg: any) {
+  return arg === null || (typeof arg !== "object" && typeof arg !== "function")
 }
