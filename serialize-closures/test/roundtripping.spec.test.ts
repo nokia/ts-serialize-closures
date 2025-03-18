@@ -1,7 +1,7 @@
-import { equal, deepEqual, notEqual } from 'node:assert';
-import { deserialize, serialize, BuiltinList, generateDefaultBuiltins } from '../src';
+import { describe, it, expect } from 'vitest';
+import { deserialize, serialize, BuiltinList, generateDefaultBuiltins } from '../src/index.js';
 import * as vm from 'vm';
-import { CustomSerializerList, CustomSerializerRecord, CustomDeserializerRecord, CustomDeserializerList } from '../src/customs';
+import { CustomSerializerList, CustomSerializerRecord, CustomDeserializerRecord, CustomDeserializerList } from '../src/customs.js';
 
 describe('Roundtripping', () => {
   function roundtrip(value, builtins?: BuiltinList, customSerializers?: CustomSerializerList, customDeserializers?: CustomDeserializerList) {
@@ -9,7 +9,7 @@ describe('Roundtripping', () => {
   }
 
   function expectRoundtrip(value, builtins?: BuiltinList) {
-    deepEqual(roundtrip(value, builtins), value);
+    expect(roundtrip(value, builtins)).toEqual(value);
   }
 
   it("can round-trip primitives", () => {
@@ -40,7 +40,8 @@ describe('Roundtripping', () => {
   it("can round-trip class-like objects", () => {
     let obj = {};
     Object.defineProperty(obj, 'hi', { get: () => 'there' });
-    equal(roundtrip(obj).hi, 'there');
+
+    expect(roundtrip(obj).hi).toBe('there');
   });
 
   it("can round-trip dates", () => {
@@ -52,9 +53,7 @@ describe('Roundtripping', () => {
   });
 
   it("can round-trip functions without closures", () => {
-    equal(
-      roundtrip(function (x) { return x; })(10),
-      10);
+     expect(roundtrip(function (x: number) { return x; })(10)).toBe(10); 
   });
 
   it("can round-trip functions with closures", () => {
@@ -62,13 +61,14 @@ describe('Roundtripping', () => {
     let f: any = function (x) { return a + x; };
     f.__closure = () => ({ a });
 
-    equal(roundtrip(f)(42), 52);
+    expect(roundtrip(f)(42)).toBe(52);
   });
 
   it("can round-trip recursive functions", function () {
     let f: any = function (x) { return x < 5 ? f(x + 1) : x; };
     f.__closure = function () { return ({ f }); };
-    equal(roundtrip(f)(1), 5);
+  
+    expect(roundtrip(f)(1)).toBe(5);
   });
 
   it("can round-trip accessors in objects", () => {
@@ -76,7 +76,8 @@ describe('Roundtripping', () => {
       x: 'there',
       get() { return this.x }
     };
-    equal(roundtrip(obj).get(), 'there');
+
+    expect(roundtrip(obj).get()).toBe('there');
   });
 
   it("can round-trip named accessors in objects", () => {
@@ -84,13 +85,14 @@ describe('Roundtripping', () => {
       x: 'there',
       get hi() { return this.x }
     };
-    equal(roundtrip(obj).hi, 'there');
+
+    expect(roundtrip(obj).hi).toBe('there');
   });
 
   it("can round-trip builtins", () => {
     expectRoundtrip(Math);
   });
-
+ 
   it("can round-trip constructors", () => {
     function Vector2(x, y) {
       this.x = x;
@@ -99,13 +101,15 @@ describe('Roundtripping', () => {
     Vector2.prototype.lengthSquared = function() { return this.x * this.x + this.y * this.y; };
     let builder: any = () => new Vector2(3, 4);
     builder.__closure = () => ({ Vector2 });
-    equal(roundtrip(builder)().lengthSquared(), 25);
+
+    expect(roundtrip(builder)().lengthSquared()).toBe(25);
   });
 
   it("can round-trip static methods", () => {
+
     var Person = /** @class */ (function () {
         var _a;
-        var Person: any = function (name, email) {
+        const Person: any = function (name, email) {
             this.name = name;
             this.email = email;
         }
@@ -120,17 +124,18 @@ describe('Roundtripping', () => {
 
     var create: any = function () { return Person.create("Clark Kent", "clark.kent@gmail.com"); };
     create.__closure = () => ({ Person });
-
-    equal(roundtrip(create)().toString(), create().toString());
+    
+    // equal(roundtrip(create)().toString(), create().toString());
+    expect(roundtrip(create)().toString()).toBe( create().toString());
   });
 
   it("can round-trip custom builtins", () => {
     let myBuiltin = { value: "Oh hi Mark!" };
-    equal(
+
+    expect(
       roundtrip(
         myBuiltin,
-        [{ name: "myBuiltin", builtin: myBuiltin }]),
-      myBuiltin);
+        [{ name: "myBuiltin", builtin: myBuiltin }])).toBe(myBuiltin);
   });
 
   it("works with vm.runInContext", () => {
@@ -139,15 +144,13 @@ describe('Roundtripping', () => {
     let box = evalImpl('{ value: "Oh hi Mark!" }');
     let builtins = generateDefaultBuiltins(undefined, evalImpl);
     let roundtrippedBox = roundtrip(box, builtins);
-    deepEqual(roundtrippedBox, box);
-    deepEqual(
-      Object.getPrototypeOf(roundtrippedBox),
-      Object.getPrototypeOf(box)
-    );
+  
+    expect(roundtrippedBox).toBe(box);
+    expect(Object.getPrototypeOf(roundtrippedBox)).toBe(Object.getPrototypeOf(box));
   });
 
   it("elides twice-underscore-prefixed properties", () => {
-    deepEqual(roundtrip({ "__elide_this": 10 }), { });
+    expect(roundtrip({ "__elide_this": 10 })).toEqual( { });
   });
 
   it("accepts a custom `eval` implementation", () => {
@@ -162,11 +165,12 @@ describe('Roundtripping', () => {
     let evalImpl = code => vm.runInContext(code, context);
     let builtins = evalImpl('generateDefaultBuiltins()');
     let deserializedBox = deserialize(serialized, builtins, [], evalImpl)();
-    deepEqual(deserializedBox, createBox());
+   
+    expect(deserializedBox).toEqual(createBox());
     // Prototypes should be different because they originate
     // from different environments.
-    notEqual(Object.getPrototypeOf(deserializedBox), Object.getPrototypeOf(createBox()));
-    equal(Object.getPrototypeOf(deserializedBox), evalImpl("Object.prototype"));
+    expect(Object.getPrototypeOf(deserializedBox)).not.toBe( Object.getPrototypeOf(createBox()));
+    expect(Object.getPrototypeOf(deserializedBox)).toBe(evalImpl("Object.prototype"));
   });
 
   it("can round-trip custom serializer", () => {
@@ -187,8 +191,9 @@ describe('Roundtripping', () => {
         return JSON.parse(stripped);
       },
     };
-    equal(
-      JSON.stringify(roundtrip(myValue, [], [serializer], [deserializer])),
+
+    expect(
+      JSON.stringify(roundtrip(myValue, [], [serializer], [deserializer]))).toBe(
       JSON.stringify(myValue)
     );
   });

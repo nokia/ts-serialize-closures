@@ -1,11 +1,12 @@
 {
   "name": "serialize-closures",
-  "version": "0.3.0",
+  "version": "1.0.0-RC1",
   "description": "Serializes closures processed by the ts-closure-transform package.",
   "main": "dist/src/index.js",
   "typings": "dist/src/index.d.ts",
   "scripts": {
-    "test": "mocha --inspect=9228",
+    "debug": "vitest --inspect-brk --no-file-parallelism",
+    "test": "vitest --disable-console-intercept",
     "build": "tsc"
   },
   "repository": {
