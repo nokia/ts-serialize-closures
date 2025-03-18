@@ -1,6 +1,6 @@
-import { types } from "util";
-import { getNameOfBuiltin, getBuiltinByName, BuiltinList, defaultBuiltins, generateDefaultBuiltins } from "./builtins";
-import { retrieveCustomSerializer, CustomSerializerList, retrieveCustomDeserializer, CustomDeserializerList } from "./customs";
+import { inspect, types } from "util";
+import { getNameOfBuiltin, getBuiltinByName, BuiltinList, defaultBuiltins, generateDefaultBuiltins } from "./builtins.js";
+import { retrieveCustomSerializer, CustomSerializerList, retrieveCustomDeserializer, CustomDeserializerList } from "./customs.js";
 
 export interface ValueFlags {
   accessor?: "get" | "set"
@@ -12,7 +12,7 @@ export interface ValueFlags {
 export class SerializedGraph {
   private indexMap: { element: any, index: number }[];
   private rootIndex: number;
-  private contentArray: any[];
+  private contentArray: ({ kind: string } & Record<string, any>)[];
   private builtins: BuiltinList;
   private customSerializers: CustomSerializerList;
   private customDeserializers: CustomDeserializerList;
@@ -100,12 +100,9 @@ export class SerializedGraph {
    * @param value The value to add.
    */
   private add(value: any, flags?: ValueFlags): number {
-    // If the value is already in the graph, then we don't
-    // need to serialize it.
+    // If the value is already in the graph, then we don't need to serialize it.
     for (let { element, index } of this.indexMap) {
-      if (element === value) {
-        return index;
-      }
+      if (element === value) return index;
     }
 
     let index = this.contentArray.length;
@@ -120,23 +117,31 @@ export class SerializedGraph {
    * @param value The function to serialize.
    */
   private serializeAccessorFunction(value: Function, kind: "get" | "set"): any {
-    let result = this.serializeFunction(value)
+    if (!value.name.startsWith(kind)) {
+      throw new Error(`Invalid accessor kind: '${value.name}'. Only 'get' and 'set' are valid accessor function names.`);
+    }
+
+    let prefix = '';
+    if (value.name === kind) {
+      prefix = 'function ';
+    } else {
+      const accessorName = value.name.split(' ')[1]; // `get name` -> `name`
+      if (!accessorName) {
+        throw new Error(`Invalid named accessor: '${value.name}'. Only 'get X' and 'set X' are valid named accessors, where X it is its name.`);
+      }
+      prefix = `function ${accessorName}`;
+    }
+
+    let serializedFn = this.serializeFunction(value);
+
     // Applying value.toString() on an accessor function can generate an invalid expression in two cases:
     // 1) named accessors: eliminate the `get` or `set` prefix.
     // 2) function application `()` in function name
-    if (value.name.startsWith(kind + ' ')) {
-      let source = "function " + value.toString().substring(4)
-      result = Object.assign({}, result, {
-        source
-      })
-    }
-    if (result.source.startsWith(kind + '(')) {
-      let source = "function " + value.toString().substring(3)
-      result = Object.assign({}, result, {
-        source
-      })
-    }
-    return result;
+    const valueStr = value.toString();
+    const startIndex = valueStr.indexOf('(');
+    const fnPrefix = startIndex === 0 ? '' : prefix;
+    const source = `${fnPrefix}${valueStr.substring(startIndex)}`;
+    return Object.assign({}, serializedFn, { source });
   }
 
   /**
@@ -158,10 +163,21 @@ export class SerializedGraph {
     if (source.startsWith("class ")) {
       throw new Error(`Cannot serialize classes. Value missing from builtin list? '${value}'`)
     }
+
+    let fixedClousure = {};
+    if (closure) {
+      const keys = Object.keys(closure());
+      for (const propName of keys) {
+        const propValue = closure()[propName];
+        if (propName !== propValue.name) fixedClousure[propValue.name] = propValue;
+        fixedClousure[propName] = propValue;
+      }
+    }
+
     let result = {
       'kind': 'function',
       'source': source,
-      'closure': this.add(closure ? closure() : undefined),
+      'closure': this.add(fixedClousure),
       'prototype': this.add(value.prototype)
     };
 
@@ -193,6 +209,16 @@ export class SerializedGraph {
    * method.
    */
   private serializeProperties(value: any, serializedValue: any): void {
+    if (typeof value === 'function' && value.prototype === undefined) {
+      Object.defineProperty(value, 'prototype', {
+        value: {},
+        enumerable: false, // Set enumerable to false to match CJS behavior
+        writable: true,
+        configurable: false
+      });
+    }
+
+
     let refs = {};
     let descriptions = {};
     for (let key of Object.getOwnPropertyNames(value)) {
@@ -205,7 +231,16 @@ export class SerializedGraph {
       let desc = Object.getOwnPropertyDescriptor(value, key);
       if ('value' in desc && desc.configurable && desc.writable && desc.enumerable) {
         // Typical property. Just encode its value and be done with it.
-        refs[key] = this.add(value[key]);
+        const flags: ValueFlags = {}
+        if (key === 'get' || key === 'set') {
+          if (typeof (value[key]) === 'function') {
+            if (!value[key].prototype) {
+              flags.accessor = key;
+            }
+          }
+        }
+
+        refs[key] = this.add(value[key], flags);
       } else {
         // Fancy property. We'll emit a description for it.
         let serializedDesc: any = {};
@@ -232,10 +267,10 @@ export class SerializedGraph {
   }
 
   /**
-   * Serializes a value. This value may be a closure or an object
-   * that contains a closure.
-   * @param value The value to serialize.
-   */
+ * Serializes a value. This value may be a closure or an object
+ * that contains a closure.
+ * @param value The value to serialize.
+ */
   private serialize(value: any, flags?: ValueFlags): any {
     // Check if the value requires a custom serializer
     let customSerializer = retrieveCustomSerializer(value, this.customSerializers)
@@ -377,7 +412,10 @@ export class SerializedGraph {
       }
       let code = `(function(${capturedVarKeys.join(", ")}) { return (${value.source}); })`;
 
+
       // Evaluate the code.
+      console.log(inspect(code))
+      console.log(inspect(capturedVarVals))
       let impl = this.evalInThisContext(code).apply(undefined, capturedVarVals);
       impl.prototype = this.get(value.prototype);
       impl.__closure = () => deserializedClosure;
@@ -434,6 +472,7 @@ export class SerializedGraph {
   private evalInThisContext(code: string) {
     // Ideally, we'd like to use a custom `eval` implementation.
     // Otherwise, `eval` will just have to do.
+
     try {
       if (this.evalImpl) {
         return this.evalImpl(code);

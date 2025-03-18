@@ -1,12 +1,12 @@
 {
     "compileOnSave": true,
     "compilerOptions": {
-        "target": "ES5",
-        "module": "commonjs",
+        "target": "ESNext",
+        "module": "NodeNext",
         "declaration": true,
-        "moduleResolution": "node",
+        "moduleResolution": "nodenext",
         "stripInternal": true,
-        "jsx": "react",
+        "skipLibCheck": true,
         "outDir": "dist"
     },
     "exclude": [

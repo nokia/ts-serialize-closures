@@ -1,6 +1,6 @@
-import { SerializedGraph } from "./serializedGraph";
-import { BuiltinList } from "./builtins";
-import { CustomSerializerList } from "./customs";
+import { SerializedGraph } from "./serializedGraph.js";
+import { BuiltinList } from "./builtins.js";
+import { CustomSerializerList } from "./customs.js";
 
 /**
  * Serializes a value. This value may be a closure or an object

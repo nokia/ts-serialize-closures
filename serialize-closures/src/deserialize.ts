@@ -1,6 +1,6 @@
-import { SerializedGraph } from "./serializedGraph";
-import { BuiltinList } from "./builtins";
-import { CustomDeserializerList} from "./customs";
+import { SerializedGraph } from "./serializedGraph.js";
+import { BuiltinList } from "./builtins.js";
+import { CustomDeserializerList} from "./customs.js";
 
 /**
  * Deserializes a serialized value.

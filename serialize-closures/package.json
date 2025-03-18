@@ -4,6 +4,7 @@
   "description": "Serializes closures processed by the ts-closure-transform package.",
   "main": "dist/src/index.js",
   "typings": "dist/src/index.d.ts",
+  "type": "module",
   "scripts": {
     "debug": "vitest --inspect-brk --no-file-parallelism",
     "test": "vitest --disable-console-intercept",
@@ -23,7 +24,8 @@
   ],
   "author": "Jonathan Van der Cruysse",
   "contributors": [
-    "Lode Hoste <lode.hoste@nokia-bell-labs.com"
+    "Lode Hoste <lode.hoste@nokia-bell-labs.com",
+    "Humberto Rodríguez Avila <humberto.rodriguez-avila@nokia-bell-labs.com"
   ],
   "license": "BSD-3-Clause",
   "bugs": {
