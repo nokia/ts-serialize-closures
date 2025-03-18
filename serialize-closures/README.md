@@ -1,6 +1,8 @@
 # serialize-closures
 
-This package is a runtime library for that allows for arbitrary object graphs to be serialized, including variable-capturing functions. **Note:** only functions whose code has first been processed by `ts-closure-transform` are eligible for serialization. 
+This package is a runtime library for that allows for arbitrary object graphs to be serialized, including variable-capturing functions. **Be aware** that only functions whose code has first been processed by `ts-closure-transform` are eligible for serialization. 
+
+ ‼️ IMPORTANT ‼️ starting from version 1.0 this library is ESM. If you want to use serialize-closures in a CJS-based project, you will probably want to use a version < 1.0.
 
 `serialize-closures` defines the `serialize` and `deserialize` functions. These should work for any object graph as long as all source code has first been processed by `ts-closure-transform`.
 
