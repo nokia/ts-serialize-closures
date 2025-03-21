@@ -414,8 +414,6 @@ export class SerializedGraph {
 
 
       // Evaluate the code.
-      console.log(inspect(code))
-      console.log(inspect(capturedVarVals))
       let impl = this.evalInThisContext(code).apply(undefined, capturedVarVals);
       impl.prototype = this.get(value.prototype);
       impl.__closure = () => deserializedClosure;
