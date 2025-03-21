@@ -169,7 +169,7 @@ export class SerializedGraph {
       const keys = Object.keys(closure());
       for (const propName of keys) {
         const propValue = closure()[propName];
-        if (propName !== propValue.name) fixedClousure[propValue.name] = propValue;
+        if (typeof propValue === 'function' && propName !== propValue.name) fixedClousure[propValue.name] = propValue;
         fixedClousure[propName] = propValue;
       }
     }
