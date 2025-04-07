@@ -113,7 +113,6 @@ export class MutableSharedVariableFinder extends VariableVisitor {
     (assignment: ts.BinaryExpression) => ts.Expression {
 
     this.noteAppearance(id);
-
     if (!this.updateCounts[id]) {
       this.updateCounts[id] = 0;
     }
@@ -169,17 +168,15 @@ class VariableBoxingVisitor extends VariableVisitor {
   protected visitUse(node: ts.Identifier, id: VariableId): ts.Expression {
     if (this.variablesToBox.indexOf(id) >= 0) {
       return ts.factory.createPropertyAccessExpression(node, "value");
-    } else {
-      return node;
-    }
+    } 
+    return node;
   }
 
   protected visitDef(node: ts.Identifier, id: VariableId): ts.Expression {
     if (this.variablesToBox.indexOf(id) >= 0) {
       return ts.factory.createObjectLiteralExpression([ts.factory.createPropertyAssignment("value", ts.factory.createIdentifier("undefined"))]);
-    } else {
-      return undefined;
-    }
+    } 
+    return undefined;
   }
 
   protected visitAssignment(name: ts.Identifier, id: VariableId): (assignment: ts.BinaryExpression) => ts.Expression {
@@ -190,9 +187,8 @@ class VariableBoxingVisitor extends VariableVisitor {
         assignment.operatorToken,
         assignment.right,
         );
-    } else {
-      return undefined;
     }
+    return undefined;
   }
 }
 
