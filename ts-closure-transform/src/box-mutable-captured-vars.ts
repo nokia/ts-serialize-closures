@@ -80,8 +80,8 @@ export class MutableSharedVariableFinder extends VariableVisitor {
    * Gets a list of all shared mutable variables detected by this variable visitor.
    */
   get mutableSharedVariables(): ReadonlyArray<VariableId> {
-    let results = [];
-    for (let id of this.sharedVars) {
+    const results = [];
+    for (const id of this.sharedVars) {
       if (this.updateCounts[id] > 1) {
         results.push(id);
       }
@@ -100,7 +100,7 @@ export class MutableSharedVariableFinder extends VariableVisitor {
 
     if (id in this.pendingAppearanceScopes) {
       // Handle pending appearances.
-      for (let scope of this.pendingAppearanceScopes[id]) {
+      for (const scope of this.pendingAppearanceScopes[id]) {
         this.noteAppearanceIn(id, scope);
       }
       delete this.pendingAppearanceScopes[id];
@@ -198,9 +198,9 @@ class VariableBoxingVisitor extends VariableVisitor {
 
 function createVisitor(ctx: ts.TransformationContext): ts.Visitor {
   return node => {
-    let analyzer = new MutableSharedVariableFinder(ctx);
+    const analyzer = new MutableSharedVariableFinder(ctx);
     node = <ts.Node>analyzer.visit(node);
-    let rewriter = new VariableBoxingVisitor(
+    const rewriter = new VariableBoxingVisitor(
       ctx,
       analyzer.store,
       analyzer.mutableSharedVariables);
