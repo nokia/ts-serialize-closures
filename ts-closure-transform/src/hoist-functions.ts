@@ -9,9 +9,9 @@ export function createFunctionHoistingVisitor(ctx: ts.TransformationContext): ts
     if (ts.isFunctionDeclaration(node)) {
       ctx.hoistFunctionDeclaration(ts.visitEachChild(node, visit, ctx));
       return [];
-    } else {
-      return ts.visitEachChild(node, visit, ctx);
-    }
+    } 
+    
+    return ts.visitEachChild(node, visit, ctx);
   }
 
   return visit;
