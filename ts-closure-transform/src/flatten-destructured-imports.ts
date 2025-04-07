@@ -52,28 +52,27 @@ function mapUnqualifiedIdentifiers<T extends ts.Node>(
   ctx: ts.TransformationContext): T {
 
   function visit<TNode extends ts.Node>(node: TNode): TNode {
-    if (node === undefined) {
-      return undefined;
-    } else if (ts.isIdentifier(node)) {
-      return <TNode><any>mapping(node);
-    } else if (ts.isPropertyAccessExpression(node)) {
+    if (node === undefined)  return undefined;
+    if (ts.isIdentifier(node))  return <TNode><any>mapping(node);
+    if (ts.isPropertyAccessExpression(node)) {
       return <TNode><any>ts.factory.updatePropertyAccessExpression(
         node,
         visit(node.expression),
         node.name);
-    } else if (ts.isPropertyAssignment(node)) {
+    }     
+    if (ts.isPropertyAssignment(node)) {
       return <TNode><any>ts.factory.updatePropertyAssignment(
         node,
         node.name,
         visit(node.initializer));
-    } else if (ts.isShorthandPropertyAssignment(node)) {
+    }
+    if (ts.isShorthandPropertyAssignment(node)) {
       return <TNode><any>ts.factory.updateShorthandPropertyAssignment(
         node,
         node.name,
         visit(node.objectAssignmentInitializer));
-    } else {
-      return ts.visitEachChild(node, visit, ctx);
-    }
+    } 
+    return ts.visitEachChild(node, visit, ctx);
   }
 
   return visit(node);
@@ -85,18 +84,17 @@ function mapUnqualifiedIdentifiers<T extends ts.Node>(
  */
 function createVisitor(ctx: ts.TransformationContext): ts.Visitor {
   function visitTopLevel<T extends ts.Node>(topLevel: T): T {
-
     // Maintain a set of all imports that have been flattened.
-    let modifiedSet: string[] = [];
+    const modifiedSet: string[] = [];
 
     function visit(node: ts.Node): ts.VisitResult<ts.Node> {
       if (ts.isImportDeclaration(node)) {
-        let clause = node.importClause;
+        const clause = node.importClause;
         if (clause) {
           // Create a temporary name for the imported module.
-          let temp = ts.factory.createUniqueName("_tct_flatten_destructured_imports");
+          const temp = ts.factory.createUniqueName("_tct_flatten_destructured_imports");
           // Bind each import to a variable.
-          let importBindings = [];
+          const importBindings = [];
 
           if (clause.name) {
             // Process the default import statement
@@ -128,7 +126,7 @@ function createVisitor(ctx: ts.TransformationContext): ts.Visitor {
           }
           if (bindings && ts.isNamedImports(bindings)) {
             // Named imports. That's exactly what we're looking for.
-            for (let specifier of bindings.elements) {
+            for (const specifier of bindings.elements) {
               importBindings.push(
                 ts.factory.createVariableStatement(
                   [],
@@ -161,14 +159,13 @@ function createVisitor(ctx: ts.TransformationContext): ts.Visitor {
       }
     }
 
-    let visited = <T>visit(topLevel);
+    const visited = <T>visit(topLevel);
     return <T>mapUnqualifiedIdentifiers(
       visited,
       ident => {
         if (modifiedSet.indexOf(ident.text) >= 0) {
-          // Replace the original identifier with a synthetic
-          // identifier to keep the TypeScript compiler from
-          // applying its import/export voodoo where it shouldn't.
+          // Replace the original identifier with a synthetic identifier to keep the 
+          // TypeScript compiler from applying its import/export voodoo where it shouldn't.
           return ts.factory.createIdentifier(ident.text);
         } else {
           return ident;
