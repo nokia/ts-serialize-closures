@@ -10,18 +10,15 @@ type Transform = (ctx: ts.TransformationContext) => ts.Transformer<ts.SourceFile
  * Takes a list of transforms and turns it into a transform pipeline.
  */
 function createPipeline(transforms: ReadonlyArray<Transform>): Transform {
-  if (transforms.length == 1) {
-    return transforms[0];
-  }
+  if (transforms.length == 1) return transforms[0];
 
   return ctx => {
     // Compose a pipeline of transforms.
-    let pipeline = transforms.map(t => t(ctx));
-
+    const pipeline = transforms.map(t => t(ctx));
     // Apply each element of the pipeline to each source file.
     return node => {
       let result = node;
-      for (let elem of pipeline) {
+      for (const elem of pipeline) {
         result = elem(result);
       }
       return result;
