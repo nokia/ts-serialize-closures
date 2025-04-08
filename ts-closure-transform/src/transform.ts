@@ -40,7 +40,7 @@ import * as ts from 'typescript';
  * @param node A variable declaration list to inspect.
  */
 function isHoistedDeclaration(node: ts.VariableDeclarationList) {
-  let isNotHoisted = (node.flags & ts.NodeFlags.Let) == ts.NodeFlags.Let
+  const isNotHoisted = (node.flags & ts.NodeFlags.Let) == ts.NodeFlags.Let
     || (node.flags & ts.NodeFlags.Const) == ts.NodeFlags.Const;
 
   return !isNotHoisted;
@@ -125,7 +125,7 @@ class CapturedVariableScope {
     if (isHoisted) {
       // If the declaration is hoisted, then the uses we encountered previously
       // did not actually capture any external variables. We should delete them.
-      let index = this.usedNames.indexOf(name.text);
+      const index = this.usedNames.indexOf(name.text);
       if (index >= 0) {
         this.usedNames.splice(index, 1);
         this.used.splice(index, 1);
@@ -155,9 +155,9 @@ function createClosureLambda(capturedVariables: ReadonlyArray<ts.Identifier>) {
   // where a, b, ... is the list of captured variables.
   //
   // First step: create the object literal returned by the lambda.
-  let objLiteralElements: ts.ObjectLiteralElementLike[] = [];
+  const objLiteralElements: ts.ObjectLiteralElementLike[] = [];
 
-  for (let variable of capturedVariables) {
+  for (const variable of capturedVariables) {
     objLiteralElements.push(
       ts.factory.createShorthandPropertyAssignment(variable));
   }
@@ -211,7 +211,7 @@ function addClosurePropertyToLambda(
 
   // If we do have captured variables, then we'll
   // construct a closure property.
-  let temp = ts.factory.createUniqueName("_tct_transform");
+  const temp = ts.factory.createUniqueName("_tct_transform");
   ctx.hoistVariableDeclaration(temp);
 
   // Use the comma operator to create an expression that looks
@@ -241,7 +241,7 @@ function visitor(ctx: ts.TransformationContext) {
     node: ts.ArrowFunction | ts.FunctionExpression,
     parentChain: CapturedVariableScope): ts.VisitResult<ts.Node> {
 
-    let chain = new CapturedVariableScope(parentChain);
+    const chain = new CapturedVariableScope(parentChain);
 
     // Declare the function expression's name.
     if (node.name) {
@@ -250,12 +250,12 @@ function visitor(ctx: ts.TransformationContext) {
     }
 
     // Declare the function declaration's parameters.
-    for (let param of node.parameters) {
+    for (const param of node.parameters) {
       visitDeclaration(param.name, chain, false);
     }
 
     // Visit the lambda and extract captured symbols.
-    let { visited, captured } = visitAndExtractCapturedSymbols(
+    const { visited, captured } = visitAndExtractCapturedSymbols(
       node,
       chain);
 
@@ -271,7 +271,7 @@ function visitor(ctx: ts.TransformationContext) {
     node: ts.FunctionDeclaration,
     parentChain: CapturedVariableScope): ts.VisitResult<ts.Node> {
 
-    let chain = new CapturedVariableScope(parentChain);
+    const chain = new CapturedVariableScope(parentChain);
 
     // Declare the function declaration's name.
     if (node.name) {
@@ -280,17 +280,17 @@ function visitor(ctx: ts.TransformationContext) {
     }
 
     // Declare the function declaration's parameters.
-    for (let param of node.parameters) {
+    for (const param of node.parameters) {
       visitDeclaration(param.name, chain, false);
     }
 
     // Visit the function and extract captured symbols.
-    let { visited, captured } = visitAndExtractCapturedSymbols(
+    const { visited, captured } = visitAndExtractCapturedSymbols(
       node.body,
       chain,
       node);
 
-    let visitedFunc = ts.factory.updateFunctionDeclaration(
+    const visitedFunc = ts.factory.updateFunctionDeclaration(
       node,
       node.modifiers,
       node.asteriskToken,
@@ -328,7 +328,7 @@ function visitor(ctx: ts.TransformationContext) {
     scopeNode = scopeNode || node;
 
     // Visit the body of the arrow function.
-    let visited = ts.visitEachChild(
+    const visited = ts.visitEachChild(
       node,
       visitor(chain),
       ctx);
@@ -396,11 +396,11 @@ function visitor(ctx: ts.TransformationContext) {
         // Before we visit the individual variable declarations, we want to take
         // a moment to tell whether those variable declarations are implicitly
         // hoisted or not.
-        let isHoisted = isHoistedDeclaration(node);
+        const isHoisted = isHoistedDeclaration(node);
 
         // Now visit the individual declarations...
         let newDeclarations = [];
-        for (let declaration of node.declarations) {
+        for (const declaration of node.declarations) {
           // ...making sure that we take their hoisted-ness into account.
           visitDeclaration(declaration.name, captured, isHoisted);
           newDeclarations.push(ts.visitEachChild(declaration, visitor(captured), ctx));
