@@ -52,7 +52,7 @@ function mapUnqualifiedIdentifiers<T extends ts.Node>(
   ctx: ts.TransformationContext): T {
 
   function visit<TNode extends ts.Node>(node: TNode): TNode {
-    if (node === undefined)  return undefined;
+    if (node === undefined)  throw new Error("Expected a `ts.Node` but got `undefined`");
     if (ts.isIdentifier(node))  return <TNode><any>mapping(node);
     if (ts.isPropertyAccessExpression(node)) {
       return <TNode><any>ts.factory.updatePropertyAccessExpression(
@@ -67,10 +67,11 @@ function mapUnqualifiedIdentifiers<T extends ts.Node>(
         visit(node.initializer));
     }
     if (ts.isShorthandPropertyAssignment(node)) {
+      const objAssignmentInit = node.objectAssignmentInitializer;
       return <TNode><any>ts.factory.updateShorthandPropertyAssignment(
         node,
         node.name,
-        visit(node.objectAssignmentInitializer));
+        objAssignmentInit ? visit(objAssignmentInit) : undefined);
     } 
     return ts.visitEachChild(node, visit, ctx);
   }
