@@ -27,7 +27,7 @@ import * as ts from 'typescript';
 import { sync as globSync } from 'glob';
 import { beforeTransform, afterTransform } from './src';
 
-export const CJS_CONFIG = {
+export const COMPILER_CONFIG = {
   module: ts.ModuleKind.ESNext,
   moduleResolution: ts.ModuleResolutionKind.NodeNext,
   noEmitOnError: false,
@@ -35,12 +35,12 @@ export const CJS_CONFIG = {
   noUnusedParameters: true,
   stripInternal: true,
   noImplicitUseStrict: true,
-  target: ts.ScriptTarget.ES5
+  target: ts.ScriptTarget.ESNext
 };
 
 export default function compile(
   input: string,
-  options: ts.CompilerOptions = CJS_CONFIG,
+  options: ts.CompilerOptions = COMPILER_CONFIG,
   writeFile?: ts.WriteFileCallback,
   printDiagnostics: boolean = true,
   transformClosures: boolean = true) {
