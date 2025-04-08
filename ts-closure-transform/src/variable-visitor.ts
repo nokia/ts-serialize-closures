@@ -9,8 +9,8 @@ function getEmitFlags(node: ts.Node): ts.EmitFlags | undefined {
   // NOTE: this is a hack that inspects the TypeScript compiler's internals.
   // The reason we're resorting to this is that TypeScript does not export
   // its version of `getEmitFlags`---it only exports `setEmitFlags`.
-  let castNode = node as ts.Node & { emitNode?: { flags: ts.EmitFlags } };
-  let emitNode = castNode.emitNode;
+  const castNode = node as ts.Node & { emitNode?: { flags: ts.EmitFlags } };
+  const emitNode = castNode.emitNode;
   return emitNode && emitNode.flags;
 }
 
@@ -20,7 +20,7 @@ function getEmitFlags(node: ts.Node): ts.EmitFlags | undefined {
  * @param node An identifier to query.
  */
 function isExportedName(node: ts.Identifier): boolean {
-  let flags = getEmitFlags(node);
+  const flags = getEmitFlags(node);
   if (flags) {
     return (flags & ts.EmitFlags.ExportName) === ts.EmitFlags.ExportName;
   } else {
@@ -54,7 +54,7 @@ export class VariableNumberingStore {
    * @param id The variable id to assign to `identifier`.
    */
   setId(identifier: ts.Identifier, id: VariableId): void {
-    for (let record of this.numbering) {
+    for (const record of this.numbering) {
       if (record.name === identifier) {
         record.id = id;
         return;
@@ -70,12 +70,12 @@ export class VariableNumberingStore {
    * @param identifier The identifier to find a variable id for.
    */
   getOrCreateId(identifier: ts.Identifier): VariableId {
-    for (let { name, id } of this.numbering) {
+    for (const { name, id } of this.numbering) {
       if (name === identifier) {
         return id;
       }
     }
-    let id = this.counter++;
+    const id = this.counter++;
     this.numbering.push({ name: identifier, id });
     return id;
   }
@@ -189,18 +189,18 @@ export class VariableNumberingScope {
    * @param name The name of the variable.
    */
   getId(name: ts.Identifier): VariableId {
-    let text = name.text;
+    const text = name.text;
     if (text in this.localVariables) {
       // If the name is defined in the local variables,
       // then just grab its id. Also, don't forget to
       // update the variable numbering store.
-      let id = this.localVariables[text];
+      const id = this.localVariables[text];
       this.store.setId(name, id);
       return id;
     } else if (text in this.pendingVariables) {
       // If the name is defined in the pending variables,
       // then we'll essentially do the same thing.
-      let id = this.pendingVariables[text];
+      const id = this.pendingVariables[text];
       this.store.setId(name, id);
       return id;
     } else if (this.parent) {
@@ -209,7 +209,7 @@ export class VariableNumberingScope {
       return this.parent.getId(name);
     } else {
       // Otherwise, add the name to the pending list.
-      let id = this.store.getOrCreateId(name);
+      const id = this.store.getOrCreateId(name);
       this.pendingVariables[name.text] = id;
       return id;
     }
@@ -304,7 +304,7 @@ export abstract class VariableVisitor {
    * @param node The statement node to visit.
    */
   protected visitStatement(node: ts.Statement): ts.Statement {
-    let result = this.visit(node);
+    const result = this.visit(node);
     if (result === undefined) {
       return ts.factory.createBlock([]);
     } else if (Array.isArray(result)) {
@@ -447,9 +447,9 @@ export abstract class VariableVisitor {
       return this.visitFunctionDeclaration(node);
 
     } else {
-      let oldScope = this.scope;
+      const oldScope = this.scope;
       this.scope = new VariableNumberingScope(false, oldScope);
-      let result = this.visitChildren(node);
+      const result = this.visitChildren(node);
       this.scope = oldScope;
       return result;
     }
@@ -473,26 +473,26 @@ export abstract class VariableVisitor {
    * @param node The expression to visit.
    */
   private visitBinaryExpression(node: ts.BinaryExpression): ts.Expression {
-    let lhs = node.left;
+    const lhs = node.left;
     if (ts.isIdentifier(lhs) && !isExportedName(lhs)) {
       // Syntax we'd like to handle: identifier [+,-,*,/,...]= rhs;
-      let id = this.scope.getId(lhs);
+      const id = this.scope.getId(lhs);
 
       if (node.operatorToken.kind === ts.SyntaxKind.EqualsToken) {
-        let visited = ts.factory.updateBinaryExpression(
+        const visited = ts.factory.updateBinaryExpression(
           node,
           lhs,
           node.operatorToken,
           this.visitExpression(node.right),
           );
-        let rewrite = this.visitAssignment(lhs, id);
+          const rewrite = this.visitAssignment(lhs, id);
         if (rewrite) {
           return rewrite(visited);
         } else {
           return visited;
         }
       } else if (node.operatorToken.kind in noAssignmentTokenMapping) {
-        let rewrite = this.visitAssignment(lhs, id);
+        const rewrite = this.visitAssignment(lhs, id);
         if (rewrite) {
           return rewrite(
             ts.factory.updateBinaryExpression(
@@ -525,13 +525,13 @@ export abstract class VariableVisitor {
    */
   private visitPreUpdateExpression(expression: ts.PrefixUnaryExpression): ts.Expression {
     if (ts.isIdentifier(expression.operand) && !isExportedName(expression.operand)) {
-      let id = this.scope.getId(expression.operand);
-      let rewrite = this.visitAssignment(expression.operand, id);
+      const id = this.scope.getId(expression.operand);
+      const rewrite = this.visitAssignment(expression.operand, id);
       if (rewrite) {
         // Rewrite pre-increment and pre-decrement updates by desugaring them and
         // then rewriting the desugared version.
-        let use = this.visitUse(expression.operand, id);
-        let value = expression.operator === ts.SyntaxKind.PlusPlusToken
+        const use = this.visitUse(expression.operand, id);
+        const value = expression.operator === ts.SyntaxKind.PlusPlusToken
           ? ts.factory.createAdd(use, ts.factory.createNumericLiteral(1))
           : ts.factory.createSubtract(use, ts.factory.createNumericLiteral(1));
 
@@ -554,13 +554,13 @@ export abstract class VariableVisitor {
    */
   private visitPostUpdateExpression(expression: ts.PostfixUnaryExpression): ts.Expression {
     if (ts.isIdentifier(expression.operand) && !isExportedName(expression.operand)) {
-      let id = this.scope.getId(expression.operand);
-      let rewrite = this.visitAssignment(expression.operand, id);
+      const id = this.scope.getId(expression.operand);
+      const rewrite = this.visitAssignment(expression.operand, id);
       if (rewrite) {
         // Rewrite post-increment and post-decrement updates by desugaring them and
         // then rewriting the desugared version.
-        let secondUse = this.visitUse(expression.operand, id);
-        let value = expression.operator === ts.SyntaxKind.PlusPlusToken
+        const secondUse = this.visitUse(expression.operand, id);
+        const value = expression.operator === ts.SyntaxKind.PlusPlusToken
           ? ts.factory.createAdd(secondUse, ts.factory.createNumericLiteral(1))
           : ts.factory.createSubtract(secondUse, ts.factory.createNumericLiteral(1));
 
@@ -632,7 +632,7 @@ export abstract class VariableVisitor {
     //     let w = 20;
     //
 
-    let statements: ts.Statement[] = [];
+    const statements: ts.Statement[] = [];
     let fixups: ts.Statement[] = [];
     let declarations: ts.VariableDeclaration[] = [];
 
@@ -651,18 +651,18 @@ export abstract class VariableVisitor {
       declarations = [];
     }
 
-    let visitBinding = (name: ts.BindingName): ts.BindingName => {
+    const visitBinding = (name: ts.BindingName): ts.BindingName => {
 
       if (ts.isIdentifier(name)) {
         if (isExportedName(name)) {
           return name;
         }
 
-        let id = this.scope.getId(name);
-        let init = this.visitDef(name, id);
-        let rewrite = this.visitAssignment(name, id);
+        const id = this.scope.getId(name);
+        const init = this.visitDef(name, id);
+        const rewrite = this.visitAssignment(name, id);
         if (rewrite) {
-          let temp = this.createTemporary();
+          const temp = this.createTemporary();
           fixups.push(
             ts.factory.createVariableStatement(
               [],
@@ -681,8 +681,8 @@ export abstract class VariableVisitor {
           return name;
         }
       } else if (ts.isArrayBindingPattern(name)) {
-        let newElements: ts.ArrayBindingElement[] = [];
-        for (let elem of name.elements) {
+        const newElements: ts.ArrayBindingElement[] = [];
+        for (const elem of name.elements) {
           if (ts.isOmittedExpression(elem)) {
             newElements.push(elem);
           } else {
@@ -699,8 +699,8 @@ export abstract class VariableVisitor {
             newElements);
         }
       } else {
-        let newElements: ts.BindingElement[] = [];
-        for (let elem of name.elements) {
+        const newElements: ts.BindingElement[] = [];
+        for (const elem of name.elements) {
           newElements.push(
             ts.factory.updateBindingElement(
               elem,
@@ -715,8 +715,8 @@ export abstract class VariableVisitor {
       }
     }
 
-    for (let decl of statement.declarationList.declarations) {
-      let name = decl.name;
+    for (const decl of statement.declarationList.declarations) {
+      const name = decl.name;
       // Define the declaration's names.
       this.defineVariables(decl.name);
       // Visit the initializer expression.
@@ -726,10 +726,10 @@ export abstract class VariableVisitor {
           // Simple initializations get special treatment because they
           // don't need a special fix-up statement, even if they are
           // rewritten.
-          let id = this.scope.getId(name);
-          let customInit = this.visitDef(name, id);
+          const id = this.scope.getId(name);
+          const customInit = this.visitDef(name, id);
           if (initializer) {
-            let rewrite = this.visitAssignment(name, id);
+            const rewrite = this.visitAssignment(name, id);
             if (rewrite) {
               fixups.push(
                 ts.factory.createExpressionStatement(
@@ -811,18 +811,18 @@ export abstract class VariableVisitor {
     //
 
     // 'for' statements introduce a new scope, so let's handle that right away.
-    let oldScope = this.scope;
+    const oldScope = this.scope;
     this.scope = new VariableNumberingScope(false, oldScope);
     let result;
     if (statement.initializer && ts.isVariableDeclarationList(statement.initializer)) {
       // If the 'for' has a variable declaration list as an initializer, then turn
       // the initializer into a variable declaration statement.
-      let initializer = this.visitStatement(ts.factory.createVariableStatement([], statement.initializer));
+      const initializer = this.visitStatement(ts.factory.createVariableStatement([], statement.initializer));
 
       // Also visit the condition, incrementor and body.
-      let condition = this.visitExpression(statement.condition);
-      let incrementor = this.visitExpression(statement.incrementor);
-      let body = this.visitStatement(statement.statement);
+      const condition = this.visitExpression(statement.condition);
+      const incrementor = this.visitExpression(statement.incrementor);
+      const body = this.visitStatement(statement.statement);
 
       if (ts.isVariableStatement(initializer)) {
         // If the initializer has been rewritten as a variable declaration, then
@@ -848,11 +848,11 @@ export abstract class VariableVisitor {
    * @param statement The statement to visit.
    */
   private visitTryStatement(statement: ts.TryStatement): ts.VisitResult<ts.Statement> {
-    let tryBlock = this.visitBlock(statement.tryBlock);
+    const tryBlock = this.visitBlock(statement.tryBlock);
     let catchClause;
     if (statement.catchClause) {
       // Catch clauses may introduce a new, locally-scoped variable.
-      let oldScope = this.scope;
+      const oldScope = this.scope;
       this.scope = new VariableNumberingScope(false, oldScope);
       if (statement.catchClause.variableDeclaration) {
         // FIXME: allow this variable to be rewritten.
@@ -866,7 +866,7 @@ export abstract class VariableVisitor {
     } else {
       catchClause = statement.catchClause;
     }
-    let finallyBlock = statement.finallyBlock
+    const finallyBlock = statement.finallyBlock
       ? this.visitBlock(statement.finallyBlock)
       : statement.finallyBlock;
     return ts.factory.updateTryStatement(statement, tryBlock, catchClause, finallyBlock);
@@ -878,19 +878,19 @@ export abstract class VariableVisitor {
    */
   private visitForInOrOfStatement(statement: ts.ForInOrOfStatement): ts.VisitResult<ts.Statement> {
     // 'for' statements may introduce a new, locally-scoped variable.
-    let oldScope = this.scope;
+    const oldScope = this.scope;
     this.scope = new VariableNumberingScope(false, oldScope);
     let initializer = statement.initializer;
     if (ts.isVariableDeclarationList(initializer)) {
       // FIXME: allow declarations to be rewritten here.
-      for (let element of initializer.declarations) {
+      for (const element of initializer.declarations) {
         this.defineVariables(element.name);
       }
     } else {
       initializer = this.visitExpression(initializer);
     }
-    let expr = this.visitExpression(statement.expression);
-    let body = this.visitStatement(statement.statement);
+    const expr = this.visitExpression(statement.expression);
+    const body = this.visitStatement(statement.statement);
     this.scope = oldScope;
 
     if (ts.isForInStatement(statement)) {
@@ -911,7 +911,7 @@ export abstract class VariableVisitor {
     body: ts.Block | ts.Expression,
     name?: ts.Identifier) {
 
-    let oldScope = this.scope;
+    const oldScope = this.scope;
     this.scope = new VariableNumberingScope(true, oldScope);
 
     if (name !== undefined) {
@@ -946,15 +946,15 @@ export abstract class VariableVisitor {
     let rewriteAssignment: ((assignment: ts.BinaryExpression) => ts.Expression) = undefined;
     if (node.name) {
       this.defineVariables(node.name);
-      let id = this.scope.getId(node.name);
+      const id = this.scope.getId(node.name);
       defInitializer = this.visitDef(node.name, id);
       rewriteAssignment = this.visitAssignment(node.name, id);
     }
 
-    let body = this.visitFunctionBody(node.parameters, node.body);
+    const body = this.visitFunctionBody(node.parameters, node.body);
 
     if (defInitializer || rewriteAssignment) {
-      let funExpr = ts.factory.createFunctionExpression(
+      const funExpr = ts.factory.createFunctionExpression(
         // @ts-ignore
         node.modifiers,
         node.asteriskToken,
@@ -964,7 +964,7 @@ export abstract class VariableVisitor {
         node.type,
         body);
 
-      let funAssignment = ts.factory.createAssignment(node.name, funExpr);
+      const funAssignment = ts.factory.createAssignment(node.name, funExpr);
 
       return [
         ts.factory.createVariableStatement(
@@ -990,7 +990,7 @@ export abstract class VariableVisitor {
    * Creates a temporary variable name.
    */
   protected createTemporary(): ts.Identifier {
-    let result = ts.factory.createUniqueName("_tct_variable_visitor");
+    const result = ts.factory.createUniqueName("_tct_variable_visitor");
     this.scope.define(result);
     return result;
   }
