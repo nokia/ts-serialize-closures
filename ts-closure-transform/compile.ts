@@ -52,19 +52,19 @@ export default function compile(
 
   const msgs = {};
 
-  let transformers = transformClosures
+  const transformers = transformClosures
     ? { before: [beforeTransform()], after: [afterTransform()] }
     : undefined;
 
-  let emitResult = program.emit(undefined, writeFile, undefined, undefined, transformers);
+  const emitResult = program.emit(undefined, writeFile, undefined, undefined, transformers);
 
   if (printDiagnostics) {
-    let allDiagnostics = ts.getPreEmitDiagnostics(program).concat(emitResult.diagnostics);
+    const allDiagnostics = ts.getPreEmitDiagnostics(program).concat(emitResult.diagnostics);
 
     allDiagnostics.forEach(diagnostic => {
       let message = ts.flattenDiagnosticMessageText(diagnostic.messageText, '\n');
       if (diagnostic.file) {
-        let { line, character } = diagnostic.file.getLineAndCharacterOfPosition(diagnostic.start!);
+        const { line, character } = diagnostic.file.getLineAndCharacterOfPosition(diagnostic.start!);
         console.log(`${diagnostic.file.fileName} (${line + 1},${character + 1}): ${message}`);
       } else {
         console.log(`${message}`);
