@@ -29,7 +29,7 @@ import { beforeTransform, afterTransform } from './src';
 
 export const CJS_CONFIG = {
   module: ts.ModuleKind.CommonJS,
-  moduleResolution: ts.ModuleResolutionKind.NodeJs,
+  moduleResolution: ts.ModuleResolutionKind.NodeNext,
   noEmitOnError: false,
   noUnusedLocals: true,
   noUnusedParameters: true,
