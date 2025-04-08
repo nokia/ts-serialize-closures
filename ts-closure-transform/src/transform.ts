@@ -300,17 +300,14 @@ function visitor(ctx: ts.TransformationContext) {
       node.type,
       visited);
 
-    if (captured.length === 0) {
-      return visitedFunc;
-    } else {
-      return [
+    if (captured.length === 0) return visitedFunc;
+
+    const closurePropAssignment = createClosurePropertyAssignment(node.name, captured);
+    return [
         visitedFunc,
-        ts.factory.createExpressionStatement(
-          createClosurePropertyAssignment(
-            node.name,
-            captured))
+        ts.factory.createExpressionStatement(closurePropAssignment)
       ];
-    }
+    
   }
 
   /**
@@ -342,9 +339,9 @@ function visitor(ctx: ts.TransformationContext) {
       if (ts.isIdentifier(node)) {
         captured.declare(node, isHoisted);
         return node;
-      } else {
-        return ts.visitEachChild(node, visit, ctx);
       }
+        
+      return ts.visitEachChild(node, visit, ctx);      
     }
 
     return visit(declaration);
@@ -364,35 +361,41 @@ function visitor(ctx: ts.TransformationContext) {
         if (node.text !== "undefined"
           && node.text !== "null"
           && node.text !== "arguments") {
-
             captured.use(node);
         }
         return node;
-      } else if (ts.isTypeNode(node)) {
-        // Don't visit type nodes.
-        return node;
-      } else if (ts.isPropertyAccessExpression(node)) {
+      }
+      
+      if (ts.isTypeNode(node))  return node; // Don't visit type nodes     
+
+      if (ts.isPropertyAccessExpression(node)) {
         // Make sure we don't accidentally fool ourselves
         // into visiting property name identifiers.
         return ts.factory.updatePropertyAccessExpression(
           node,
           recurse(node.expression),
           node.name);
-      } else if (ts.isQualifiedName(node)) {
+      } 
+      
+      if (ts.isQualifiedName(node)) {
         // Make sure we don't accidentally fool ourselves
         // into visiting the right-hand side of a qualified name.
         return ts.factory.updateQualifiedName(
           node,
           recurse(node.left),
           node.right);
-      } else if (ts.isPropertyAssignment(node)) {
+      } 
+      
+      if (ts.isPropertyAssignment(node)) {
         // Make sure we don't accidentally fool ourselves
         // into visiting property name identifiers.
         return ts.factory.updatePropertyAssignment(
           node,
           node.name,
           recurse(node.initializer));
-      } else if (ts.isVariableDeclarationList(node)) {
+      } 
+      
+      if (ts.isVariableDeclarationList(node)) {
         // Before we visit the individual variable declarations, we want to take
         // a moment to tell whether those variable declarations are implicitly
         // hoisted or not.
@@ -407,16 +410,22 @@ function visitor(ctx: ts.TransformationContext) {
         }
         // Finally, update the declaration list.
         return ts.factory.updateVariableDeclarationList(node, newDeclarations);
-      } else if (ts.isVariableDeclaration(node)) {
+      } 
+      
+      if (ts.isVariableDeclaration(node)) {
         visitDeclaration(node.name, captured, false);
         return ts.visitEachChild(node, visitor(captured), ctx);
-      } else if (ts.isArrowFunction(node) || ts.isFunctionExpression(node)) {
+      } 
+      
+      if (ts.isArrowFunction(node) || ts.isFunctionExpression(node)) {
         return transformLambda(node, captured);
-      } else if (ts.isFunctionDeclaration(node)) {
+      } 
+      
+      if (ts.isFunctionDeclaration(node)) {
         return transformFunctionDeclaration(node, captured);
-      } else {
-        return ts.visitEachChild(node, visitor(captured), ctx);
-      }
+      } 
+      
+      return ts.visitEachChild(node, visitor(captured), ctx);
     };
   }
 
