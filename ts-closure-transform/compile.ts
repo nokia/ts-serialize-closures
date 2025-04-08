@@ -28,7 +28,7 @@ import { sync as globSync } from 'glob';
 import { beforeTransform, afterTransform } from './src';
 
 export const CJS_CONFIG = {
-  module: ts.ModuleKind.CommonJS,
+  module: ts.ModuleKind.ESNext,
   moduleResolution: ts.ModuleResolutionKind.NodeNext,
   noEmitOnError: false,
   noUnusedLocals: true,
