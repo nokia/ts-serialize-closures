@@ -95,7 +95,7 @@ export class MutableSharedVariableFinder extends VariableVisitor {
     return node;
   }
   
-  protected visitDef(node: ts.Identifier, id: VariableId): ts.Expression {
+  protected visitDef(node: ts.Identifier, id: VariableId):  ts.Expression | undefined { 
     this.defScopes[id] = this.scope.functionScope;
 
     if (id in this.pendingAppearanceScopes) {
@@ -110,7 +110,7 @@ export class MutableSharedVariableFinder extends VariableVisitor {
   }
 
   protected visitAssignment(name: ts.Identifier, id: VariableId):
-    (assignment: ts.BinaryExpression) => ts.Expression {
+    ((assignment: ts.BinaryExpression) => ts.Expression) | undefined {
 
     this.noteAppearance(id);
     if (!this.updateCounts[id]) {
@@ -172,14 +172,14 @@ class VariableBoxingVisitor extends VariableVisitor {
     return node;
   }
 
-  protected visitDef(node: ts.Identifier, id: VariableId): ts.Expression {
+  protected visitDef(node: ts.Identifier, id: VariableId): ts.Expression | undefined {
     if (this.variablesToBox.indexOf(id) >= 0) {
       return ts.factory.createObjectLiteralExpression([ts.factory.createPropertyAssignment("value", ts.factory.createIdentifier("undefined"))]);
     } 
     return undefined;
   }
 
-  protected visitAssignment(name: ts.Identifier, id: VariableId): (assignment: ts.BinaryExpression) => ts.Expression {
+  protected visitAssignment(name: ts.Identifier, id: VariableId): ((assignment: ts.BinaryExpression) => ts.Expression) | undefined {
     if (this.variablesToBox.indexOf(id) >= 0) {
       return assignment => ts.factory.updateBinaryExpression(
         assignment,
