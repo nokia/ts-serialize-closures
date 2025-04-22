@@ -284,6 +284,7 @@ function visitor(ctx: ts.TransformationContext) {
       visitDeclaration(param.name, chain, false);
     }
 
+    if(!node.body) throw new Error('Function body is missing');
     // Visit the function and extract captured symbols.
     const { visited, captured } = visitAndExtractCapturedSymbols(
       node.body,
@@ -302,6 +303,7 @@ function visitor(ctx: ts.TransformationContext) {
 
     if (captured.length === 0) return visitedFunc;
 
+    if(!node.name) throw new Error('Function name is missing');
     const closurePropAssignment = createClosurePropertyAssignment(node.name, captured);
     return [
         visitedFunc,

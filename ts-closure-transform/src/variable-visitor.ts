@@ -1,6 +1,8 @@
 import * as ts from 'typescript';
 import { simplifyExpression, noAssignmentTokenMapping } from './simplify';
 
+
+type NodeWithBlockBody = ts.GetAccessorDeclaration | ts.MethodDeclaration | ts.SetAccessorDeclaration | ts.FunctionExpression | ts.FunctionDeclaration;
 /**
  * Gets a node's emit flags.
  * @param node A node to query.
@@ -274,7 +276,7 @@ export abstract class VariableVisitor {
    * @param id The variable's identifier.
    * @returns An optional initial value for the definition.
    */
-  protected abstract visitDef(node: ts.Identifier, id: VariableId): undefined | ts.Expression;
+  protected abstract visitDef(node: ts.Identifier, id: VariableId): ts.Expression | undefined;
 
   /**
    * Visits an expression that assigns a value to
@@ -323,75 +325,70 @@ export abstract class VariableVisitor {
    * @param node The node to visit.
    */
   visit(node: ts.Node): ts.VisitResult<ts.Node> {
-    if (node === undefined) {
-      return undefined;
-
-    }
-    // Expressions
-    else if (ts.isIdentifier(node)) {
+    if (node === undefined)  throw new Error("Expected a ts.Node instead of `undefined`");
+    // Expressions    
+    if (ts.isIdentifier(node)) {
       if (node.text !== "undefined"
         && node.text !== "null"
         && node.text !== "arguments"
         && !isExportedName(node)) {
         return this.visitUse(node, this.scope.getId(node));
-      } else {
-        return node;
-      }
+      } 
+      return node;      
+    } 
 
-    } else if (ts.isTypeNode(node)) {
-      // Don't visit type nodes.
-      return node;
-
-    } else if (ts.isPropertyAccessExpression(node)) {
+    if (ts.isTypeNode(node)) return node;  // Don't visit type nodes.
+    if (ts.isPropertyAccessExpression(node)) {
       return ts.factory.updatePropertyAccessExpression(
         node,
         this.visitExpression(node.expression),
         node.name);
 
-    } else if (ts.isQualifiedName(node)) {
+    } 
+    
+    if (ts.isQualifiedName(node)) {
       return ts.factory.updateQualifiedName(
         node,
         <ts.EntityName>this.visit(node.left),
         node.right);
-
-    } else if (ts.isPropertyAssignment(node)) {
+    } 
+    
+    if (ts.isPropertyAssignment(node)) {
       return ts.factory.updatePropertyAssignment(
         node,
         node.name,
         this.visitExpression(node.initializer));
-
-    } else if (ts.isShorthandPropertyAssignment(node)) {
+    } 
+    
+    if (ts.isShorthandPropertyAssignment(node)) {
+      const objAssignmentInit = node.objectAssignmentInitializer;
       return ts.factory.updateShorthandPropertyAssignment(
         node,
         node.name,
-        this.visitExpression(node.objectAssignmentInitializer));
-
-    } else if (ts.isBinaryExpression(node)) {
-      return this.visitBinaryExpression(node);
-
-    } else if (ts.isPrefixUnaryExpression(node)
+        objAssignmentInit ? this.visitExpression(objAssignmentInit): undefined);
+    } 
+    
+    if (ts.isBinaryExpression(node)) return this.visitBinaryExpression(node);
+    
+    if (ts.isPrefixUnaryExpression(node)
       && (node.operator === ts.SyntaxKind.PlusPlusToken
         || node.operator === ts.SyntaxKind.MinusMinusToken)) {
       return this.visitPreUpdateExpression(node);
-
-    } else if (ts.isPostfixUnaryExpression(node)
+    } 
+    
+    if (ts.isPostfixUnaryExpression(node)
       && (node.operator === ts.SyntaxKind.PlusPlusToken
         || node.operator === ts.SyntaxKind.MinusMinusToken)) {
       return this.visitPostUpdateExpression(node);
+    }
 
-    }
     // Statements
-    else if (ts.isVariableStatement(node)) {
-      return this.visitVariableStatement(node);
-    } else if (ts.isForStatement(node)) {
-      return this.visitForStatement(node);
-    } else if (ts.isForInStatement(node) || ts.isForOfStatement(node)) {
-      return this.visitForInOrOfStatement(node);
-    } else if (ts.isTryStatement(node)) {
-      return this.visitTryStatement(node);
-    }
+    if (ts.isVariableStatement(node)) return this.visitVariableStatement(node);
+    if (ts.isForStatement(node)) return this.visitForStatement(node);
+    if (ts.isForInStatement(node) || ts.isForOfStatement(node)) return this.visitForInOrOfStatement(node); 
+    if (ts.isTryStatement(node)) return this.visitTryStatement(node);
     // Things that introduce scopes.
-    else if (ts.isArrowFunction(node)) {
+    if (ts.isArrowFunction(node)) {
       let body = this.visitFunctionBody(node.parameters, node.body);
       return ts.factory.updateArrowFunction(
         node,
@@ -401,9 +398,12 @@ export abstract class VariableVisitor {
         node.type,
         node.equalsGreaterThanToken,
         body);
+    } 
+    
+    if (ts.isFunctionExpression(node)) {
+      const body = this.visitFunctionBlockBody(node);
+      if (!body) throw new Error("The FunctionExpression's body is undefined");
 
-    } else if (ts.isFunctionExpression(node)) {
-      let body = this.visitFunctionBody(node.parameters, node.body, node.name);
       return ts.factory.updateFunctionExpression(
         node,
         node.modifiers,
@@ -413,25 +413,31 @@ export abstract class VariableVisitor {
         node.parameters,
         node.type,
         body);
-
-    } else if (ts.isGetAccessor(node)) {
+    } 
+    
+    if (ts.isGetAccessor(node)) {
+      const body = this.visitFunctionBlockBody(node);
       return ts.factory.updateGetAccessorDeclaration(
         node,
         node.modifiers,
         node.name,
         node.parameters,
         node.type,
-        this.visitFunctionBody(node.parameters, node.body));
-
-    } else if (ts.isSetAccessor(node)) {
+        body);
+    } 
+    
+    if (ts.isSetAccessor(node)) {
+      const body = this.visitFunctionBlockBody(node);
       return ts.factory.updateSetAccessorDeclaration(
         node,
         node.modifiers,
         node.name,
         node.parameters,
-        this.visitFunctionBody(node.parameters, node.body));
-
-    } else if (ts.isMethodDeclaration(node)) {
+        body);
+    }
+    
+    if (ts.isMethodDeclaration(node)) {
+      const body = this.visitFunctionBlockBody(node);
       return ts.factory.updateMethodDeclaration(
         node,
         node.modifiers,
@@ -441,18 +447,26 @@ export abstract class VariableVisitor {
         node.typeParameters,
         node.parameters,
         node.type,
-        this.visitFunctionBody(node.parameters, node.body));
-
-    } else if (ts.isFunctionDeclaration(node)) {
-      return this.visitFunctionDeclaration(node);
-
-    } else {
-      const oldScope = this.scope;
-      this.scope = new VariableNumberingScope(false, oldScope);
-      const result = this.visitChildren(node);
-      this.scope = oldScope;
-      return result;
+        body);
     }
+    
+    if (ts.isFunctionDeclaration(node))  return this.visitFunctionDeclaration(node);
+
+    const oldScope = this.scope;
+    this.scope = new VariableNumberingScope(false, oldScope);
+    const result = this.visitChildren(node);
+    this.scope = oldScope;
+    return result;    
+  }
+
+  private visitFunctionBlockBody(node: NodeWithBlockBody) {
+    let body: ts.Block | undefined = undefined;
+      if (node.body) {
+        const blockOrExpression  = this.visitFunctionBody(node.parameters, node.body);
+        if (!ts.isBlock(blockOrExpression)) throw new Error("The node's body got a ts.Expression instead of ts.Block");
+        body = blockOrExpression;
+      }
+      return body;
   }
 
   private visitChildren<T extends ts.Node>(node: T): T {
@@ -651,7 +665,7 @@ export abstract class VariableVisitor {
       declarations = [];
     }
 
-    const visitBinding = (name: ts.BindingName): ts.BindingName => {
+    const visitBinding = (name: ts.BindingName): ts.Identifier | ts.BindingPattern  => {
 
       if (ts.isIdentifier(name)) {
         if (isExportedName(name)) {
@@ -677,9 +691,8 @@ export abstract class VariableVisitor {
               rewrite(
                 ts.factory.createAssignment(name, temp))));
           return temp;
-        } else {
-          return name;
         }
+        return name;
       } else if (ts.isArrayBindingPattern(name)) {
         const newElements: ts.ArrayBindingElement[] = [];
         for (const elem of name.elements) {
@@ -694,10 +707,10 @@ export abstract class VariableVisitor {
                 visitBinding(elem.name),
                 elem.initializer));
           }
-          return ts.factory.updateArrayBindingPattern(
-            name,
-            newElements);
         }
+        return ts.factory.updateArrayBindingPattern(
+          name,
+          newElements); //[HRA] I moved this outside the for loop. I think it was a bug as it was since no value could be returned
       } else {
         const newElements: ts.BindingElement[] = [];
         for (const elem of name.elements) {
@@ -709,9 +722,8 @@ export abstract class VariableVisitor {
               visitBinding(elem.name),
               elem.initializer));
         }
-        return ts.factory.updateObjectBindingPattern(
-          name,
-          newElements);
+
+        return ts.factory.updateObjectBindingPattern(name,newElements);     
       }
     }
 
@@ -720,7 +732,9 @@ export abstract class VariableVisitor {
       // Define the declaration's names.
       this.defineVariables(decl.name);
       // Visit the initializer expression.
-      let initializer = this.visitExpression(decl.initializer);
+      let initializer = undefined
+      if (decl.initializer) initializer = this.visitExpression(decl.initializer);
+
       if (ts.isIdentifier(name)) {
         if (!isExportedName(name)) {
           // Simple initializations get special treatment because they
@@ -820,8 +834,8 @@ export abstract class VariableVisitor {
       const initializer = this.visitStatement(ts.factory.createVariableStatement([], statement.initializer));
 
       // Also visit the condition, incrementor and body.
-      const condition = this.visitExpression(statement.condition);
-      const incrementor = this.visitExpression(statement.incrementor);
+      const condition = statement.condition ? this.visitExpression(statement.condition) : undefined;
+      const incrementor = statement.incrementor ? this.visitExpression(statement.incrementor) : undefined;
       const body = this.visitStatement(statement.statement);
 
       if (ts.isVariableStatement(initializer)) {
@@ -918,7 +932,7 @@ export abstract class VariableVisitor {
       this.defineVariables(name);
     }
 
-    for (let param of parameters) {
+    for (const param of parameters) {
       this.defineVariables(param.name);
     }
 
@@ -942,8 +956,8 @@ export abstract class VariableVisitor {
     // are actually variable definitions and assignments. If
     // the variable visitor decides to rewrite a function
     // declaration, then we need to rewrite it as an expression.
-    let defInitializer: ts.Expression = undefined;
-    let rewriteAssignment: ((assignment: ts.BinaryExpression) => ts.Expression) = undefined;
+    let defInitializer: ts.Expression | undefined = undefined;
+    let rewriteAssignment: ((assignment: ts.BinaryExpression) => ts.Expression) | undefined = undefined;
     if (node.name) {
       this.defineVariables(node.name);
       const id = this.scope.getId(node.name);
@@ -951,7 +965,8 @@ export abstract class VariableVisitor {
       rewriteAssignment = this.visitAssignment(node.name, id);
     }
 
-    const body = this.visitFunctionBody(node.parameters, node.body);
+    // const body = this.visitFunctionBody(node.parameters, node.body);
+    const body = this.visitFunctionBlockBody(node);
 
     if (defInitializer || rewriteAssignment) {
       const funExpr = ts.factory.createFunctionExpression(
@@ -964,6 +979,7 @@ export abstract class VariableVisitor {
         node.type,
         body);
 
+      if (!node.name) throw new Error('Cannot rewrite function without name');
       const funAssignment = ts.factory.createAssignment(node.name, funExpr);
 
       return [
