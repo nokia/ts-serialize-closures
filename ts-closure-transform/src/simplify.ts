@@ -13,12 +13,19 @@ export function simplify(node: ts.Node): ts.Node {
       // a = a <op> b
       // -->
       // a <op>= b
-
+      const token = assignmentTokenMapping[node.right.operatorToken.kind] as ts.SyntaxKind.Unknown;
+      if (!token) throw new Error(`Expected a 'ts.SyntaxKind' but got '${token}'`);
+      
+     
+      const operatorToken = (ts.factory.createToken(token) as unknown )as ts.Token<ts.SyntaxKind.Unknown>;
+      const operator = operatorToken.kind;
+      
+       if (!isBinaryOperator(operator)) throw new Error(`Expected a 'ts.BinaryOperator', but got '${token}'`);
       return simplify(
         ts.factory.updateBinaryExpression(
           node,
           node.left,
-          ts.factory.createToken(assignmentTokenMapping[node.right.operatorToken.kind]),
+          operator,
           node.right.right,
           ));
     } else if (ts.isLiteralExpression(node.right)
@@ -38,6 +45,10 @@ export function simplify(node: ts.Node): ts.Node {
     }
   }
   return node;
+}
+
+function isBinaryOperator(kind: ts.SyntaxKind): kind is ts.BinaryOperator {
+  return kind >= ts.SyntaxKind.FirstBinaryOperator && kind <= ts.SyntaxKind.LastBinaryOperator;
 }
 
 /**
@@ -75,7 +86,7 @@ export function areEqual(left: ts.Node, right: ts.Node): boolean {
   }
 }
 
-export const noAssignmentTokenMapping = {
+export const noAssignmentTokenMapping: Partial<Record<ts.SyntaxKind, ts.SyntaxKind>> = {
   [ts.SyntaxKind.PlusEqualsToken]: ts.SyntaxKind.PlusToken,
   [ts.SyntaxKind.MinusEqualsToken]: ts.SyntaxKind.MinusToken,
   [ts.SyntaxKind.AsteriskEqualsToken]: ts.SyntaxKind.AsteriskToken,
@@ -91,9 +102,12 @@ export const noAssignmentTokenMapping = {
 };
 
 const assignmentTokenMapping = (() => {
-  let results: any = {};
-  for (let key in noAssignmentTokenMapping) {
-    results[noAssignmentTokenMapping[key]] = parseInt(key);
+  const results:  Partial<Record<ts.SyntaxKind, ts.SyntaxKind>> = {};
+  for (const key in noAssignmentTokenMapping) {
+    const assignmentKind = Number(key) as ts.SyntaxKind;
+    const nonAssignmentKind = noAssignmentTokenMapping[assignmentKind];
+    if (nonAssignmentKind === undefined) continue;
+    results[nonAssignmentKind] = assignmentKind;
   }
   return results;
 })();
