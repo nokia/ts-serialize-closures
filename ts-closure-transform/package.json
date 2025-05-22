@@ -4,7 +4,7 @@
   "description": "Rewrites functions to include a '__closure' property, suitable for function serialization.",
   "main": "dist/index.js",
   "typings": "dist/index.d.ts",
-  "type": "commonjs",
+  "type": "module",
   "scripts": {
     "build": "tsc",
     "test": "mocha --inspect=9228",
@@ -21,7 +21,8 @@
   ],
   "author": "Jonathan Van der Cruysse",
   "contributors": [
-    "Lode Hoste <lode.hoste@nokia-bell-labs.com"
+    "Lode Hoste <lode.hoste@nokia-bell-labs.com",
+    "Humberto Rodríguez Avila <humberto.rodriguez_avila@nokia-bell-labs.com"
   ],
   "license": "BSD-3-Clause",
   "bugs": {
@@ -38,6 +39,7 @@
     "glob": "^10.3.10",
     "mocha": "^10.2.0",
     "ts-node": "^10.9.2",
-    "typescript": "5.3.3"
+    "typescript": "5.3.3",
+    "vitest": "^3.0.9"
   }
 }
