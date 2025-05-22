@@ -23,11 +23,8 @@ function getEmitFlags(node: ts.Node): ts.EmitFlags | undefined {
  */
 function isExportedName(node: ts.Identifier): boolean {
   const flags = getEmitFlags(node);
-  if (flags) {
-    return (flags & ts.EmitFlags.ExportName) === ts.EmitFlags.ExportName;
-  } else {
-    return false;
-  }
+  if (!flags) return false;
+  return (flags & ts.EmitFlags.ExportName) === ts.EmitFlags.ExportName;
 }
 
 /**
