@@ -14,7 +14,7 @@ export type CustomSerializerRecord = {
  */
 export type CustomDeserializerRecord = {
     name: string,
-    deserializer: (string) => any
+    deserializer: (str: string) => any
 };
 
 /**
@@ -55,13 +55,13 @@ export function retrieveCustomSerializer(value: any, customList?: CustomSerializ
  * @param customList An optional list of CustomDeserializerRecord to search through.
  * @returns A custom deserializer for `name`-values; otherwise, `undefined`.
  */
-export function retrieveCustomDeserializer(name: any, customList?: CustomDeserializerList): (string) => any | undefined {
-    if (!customList) return undefined
+export function retrieveCustomDeserializer(name: any, customList?: CustomDeserializerList): (str: string) => any | undefined {
+    if (!customList) return;
     // Check if value requires a custom deserializer
     for (let custom of customList) {
         if (custom.name === name) {
             return custom.deserializer;
         }
     }
-    return undefined;
+    return;
 }

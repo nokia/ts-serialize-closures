@@ -127,12 +127,12 @@ export function generateDefaultBuiltins(
   rootNames?: ReadonlyArray<string>,
   evalImpl?: (code: string) => any): BuiltinList {
 
-  evalImpl = evalImpl || eval;
+  const evalFn = evalImpl || eval;
   rootNames = rootNames || rootBuiltinNames;
   return expandBuiltins(
     rootNames
-      .filter(name => evalImpl(`typeof ${name}`) !== 'undefined')
-      .map(name => ({ name, builtin: evalImpl(name) })));
+      .filter(name => evalFn(`typeof ${name}`) !== 'undefined')
+      .map(name => ({ name, builtin: evalFn(name) })));
 }
 
 /**
@@ -146,7 +146,7 @@ export function expandBuiltins(roots: BuiltinList): BuiltinList {
   let worklist: BuiltinRecord[] = [];
   worklist.push(...roots);
 
-  function addToWorklist(baseName, propertyName, builtin) {
+  function addToWorklist(baseName: string, propertyName: string, builtin: any) {
     if (!isPrimitive(builtin)) {
       worklist.push({
         name: `${baseName}.${propertyName}`,
@@ -156,18 +156,20 @@ export function expandBuiltins(roots: BuiltinList): BuiltinList {
   }
 
   while (worklist.length > 0) {
-    let record = worklist.shift();
+    const record = worklist.shift();
+    if (!record) continue; // skip if undefined
+
     if (getNameOfBuiltin(record.builtin, results) === undefined) {
       // Builtin does not exist already. Add it to the results.
       results.push(record);
       // Add the builtin's properties to the worklist.
-      for (let propName of Object.getOwnPropertyNames(record.builtin)) {
+      for (const propName of Object.getOwnPropertyNames(record.builtin)) {
         if (propName === 'callee' || propName === 'caller' || propName === 'arguments') {
           continue;
         } else {
           try {
-            let desc = Object.getOwnPropertyDescriptor(record.builtin, propName);
-            if (desc.value) {
+            const desc = Object.getOwnPropertyDescriptor(record.builtin, propName);
+            if (desc && desc.value) {
               addToWorklist(record.name, propName, desc.value);
             }
           } catch (e) {
