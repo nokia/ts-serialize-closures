@@ -1,8 +1,9 @@
-import compile, { CJS_CONFIG } from '../compile';
-import { resolve } from 'path';
-import { equal } from 'node:assert';
-import * as fs from 'fs';
+import compile, { COMPILER_CONFIG } from '../compile';
+import * as path from 'node:path';
+import * as fs from 'node:fs';
 import * as ts from 'typescript';
+import { describe, it, expect } from 'vitest';
+import * as url from 'node:url';
 
 // Note to test authors: the test runner is designed to
 // extract and compile tests automatically. You don't need
@@ -24,6 +25,8 @@ import * as ts from 'typescript';
 //     custom transformation on) and subsequently imported.
 //     The compiled serialization test file's exports are treated as
 //     unit tests.
+
+const __dirname = url.fileURLToPath(new URL('.', import.meta.url));
 
 /**
  * Asserts that a particular source file compiles to
@@ -53,12 +56,12 @@ function assertCompilesTo(sourceFile: string, expectedOutput: string) {
       console.log(data);
     }
 
-    equal(trimmedData, trimmedOutput);
+    expect(trimmedData).toBe(trimmedOutput);
   }
 
   compile(
-    resolve(__dirname, `fixture/${sourceFile}`),
-    { ...CJS_CONFIG, target: ts.ScriptTarget.Latest },
+    path.resolve(__dirname, `fixture/${sourceFile}`),
+    { ...COMPILER_CONFIG, target: ts.ScriptTarget.Latest },
     writeFileCallback,
     false);
 }
@@ -68,7 +71,7 @@ function assertCompilesTo(sourceFile: string, expectedOutput: string) {
  * @param fileName The name of the file to read.
  */
 function readTextFile(fileName: string) {
-  return fs.readFileSync(resolve(__dirname, fileName), { encoding: 'utf8' });
+  return fs.readFileSync(path.resolve(__dirname, fileName), { encoding: 'utf8' });
 }
 
 /**
@@ -88,26 +91,26 @@ function getTestFilePairs(): { sourceFileName: string, outputFileName: string }[
  * @param ext The extension to look for.
  */
 function getFilesWithExtension(dir: string, ext: string): ReadonlyArray<string> {
-  return fs.readdirSync(resolve(__dirname, dir))
+  return fs.readdirSync(path.resolve(__dirname, dir))
     .filter(path =>
-      path.length > ext.length + 1 && path.substr(path.length - ext.length - 1) == "." + ext);
+      path.length > ext.length + 1 && path.substring(path.length - ext.length - 1) == "." + ext);
 }
 
 describe('Compilation', () => {
   // Compile all test files and make sure they match the expected output.
-  for (let { sourceFileName, outputFileName } of getTestFilePairs()) {
+  for (const { sourceFileName, outputFileName } of getTestFilePairs()) {
     it(sourceFileName, () => {
       assertCompilesTo(sourceFileName, readTextFile(`fixture/${outputFileName}`));
     });
   }
 });
 
-describe('Serialization', () => {
+describe('Serialization', async () => {
   for (let fileName of getFilesWithExtension('serialization', 'ts')) {
-    compile(resolve(__dirname, `serialization/${fileName}`), undefined, undefined, false);
+    compile(path.resolve(__dirname, `serialization/${fileName}`), undefined, undefined, false);
 
-    let jsFileName = resolve(__dirname, `serialization/${fileName.substr(0, fileName.length - 3)}.js`);
-    let compiledModule = require(jsFileName);
+    let jsFileName = path.resolve(__dirname, `serialization/${fileName.substring(0, fileName.length - 3)}.js`);
+    let compiledModule = await import(jsFileName);
     for (let exportedTestName in compiledModule) {
       let exportedTest = compiledModule[exportedTestName];
       if (exportedTest instanceof Function) {

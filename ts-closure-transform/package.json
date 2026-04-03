@@ -7,8 +7,8 @@
   "type": "module",
   "scripts": {
     "build": "tsc",
-    "test": "mocha --inspect=9228",
-    "test:clean": "rm -rf test/fixture/*.js && mocha"
+    "debug": "rm -rf test/fixture/*.js && vitest --inspect-brk --no-file-parallelism",
+    "test": "rm -rf test/fixture/*.js && vitest --disable-console-intercept"
   },
   "repository": {
     "type": "git",
