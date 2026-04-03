@@ -1,6 +1,4 @@
-function f() {
-  return 12;
-}
+let f = () => 12;
 
 function g() {
   return f();
