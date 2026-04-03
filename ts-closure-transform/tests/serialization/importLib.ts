@@ -1,7 +1,7 @@
 import { equal } from "node:assert";
 import { Person, formatPerson } from "../lib";
 import PersonDefaultImport from "../lib";
-import PersonDefaultEqualsImport = require("../lib");
+import * as PersonDefaultEqualsImport from "../lib"; // require("../lib");
 import * as person from "../lib";
 import { deserialize, serialize } from "../../../serialize-closures/src";
 

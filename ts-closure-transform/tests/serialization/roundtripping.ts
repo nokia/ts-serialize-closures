@@ -18,7 +18,7 @@ export function roundTripObjectPropertyValueShorthand() {
 export function roundTripObjectPropertyValueShorthand2() {
   let f = v => {
     let vs: any[] = []
-    vs.push({v});
+    vs.push({ v });
     return vs;
   }
   let f2 = roundtrip(f);
@@ -70,7 +70,7 @@ export function roundTripHoistingClosure3() {
     const a = 1;
     const f = (v: number) => v + a
     return curriedAdd;
-    function curriedAdd(x) {
+    function curriedAdd(x: number) {
       return f(x);
     }
   };
@@ -81,8 +81,8 @@ export function roundTripHoistingClosure3() {
 
 export function roundTripNestedClosure() {
   let a = 10;
-  let f = x => {
-    return y => {
+  let f = (x: number) => {
+    return (y: number) => {
       return { result: a + x + y, f };
     };
   };
@@ -103,7 +103,7 @@ export function roundTripMathClosure() {
 
 export function roundTripMathFunctionClosure() {
   let sqrt = Math.sqrt;
-  let f = x => {
+  let f = (x: number) => {
     return sqrt(x);
   };
 
